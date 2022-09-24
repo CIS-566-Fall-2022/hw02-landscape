@@ -67,9 +67,9 @@ function main() {
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
 
-  const flat = new ShaderProgram([
-    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
-    new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
+  const sceneShader = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/scene-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/scene-frag.glsl')),
   ]);
 
   function processKeyPresses() {
@@ -83,7 +83,7 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
-    renderer.render(camera, flat, [
+    renderer.render(camera, sceneShader, [
       square,
     ], time);
     time++;
@@ -97,13 +97,13 @@ function main() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.setAspectRatio(window.innerWidth / window.innerHeight);
     camera.updateProjectionMatrix();
-    flat.setDimensions(window.innerWidth, window.innerHeight);
+    sceneShader.setDimensions(window.innerWidth, window.innerHeight);
   }, false);
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.setAspectRatio(window.innerWidth / window.innerHeight);
   camera.updateProjectionMatrix();
-  flat.setDimensions(window.innerWidth, window.innerHeight);
+  sceneShader.setDimensions(window.innerWidth, window.innerHeight);
 
   // Start the render loop
   tick();
