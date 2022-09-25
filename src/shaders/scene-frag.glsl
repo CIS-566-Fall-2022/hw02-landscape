@@ -2,7 +2,7 @@
 precision highp float;
 
 #define MAX_RAY_STEPS (128)
-// #define MAX_RAY_STEPS (32)
+#define MAX_DISTANCE (256.0)
 #define EPSILON (1e-2)
 
 #define FBM_OCTAVES (4)
@@ -219,62 +219,12 @@ float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
   return length(pa - ba * h) - r;
 }
 
-float cellCapsuleSDF(ivec3 gridPoint, vec3 fractPos, ivec3 capsulePos1) {
-  vec3 random = random3(vec3(gridPoint + capsulePos1));
-  float radius = 0.2 + 0.3 * random.x;
-  capsulePos1.y = gridPoint.y;
-  vec3 capsulePos2 = vec3(capsulePos1) + vec3(0, 0.5 + random.y, 0);
-  return capsuleSDF(fractPos, vec3(capsulePos1), capsulePos2, radius);
-}
-
-float capsuleGridSDF(vec3 pos) {
-  ivec3 gridPoint = ivec3(floor(pos));
-  gridPoint.y = -3;
-  vec3 fractPos = fract(pos);
-  fractPos.y = pos.y;
-  return min(min(
-    cellCapsuleSDF(gridPoint, fractPos, ivec3(0, 0, 0)),
-    cellCapsuleSDF(gridPoint, fractPos, ivec3(1, 0, 0))
-  ), min(
-    cellCapsuleSDF(gridPoint, fractPos, ivec3(0, 0, 1)),
-    cellCapsuleSDF(gridPoint, fractPos, ivec3(1, 0, 1))
-  ));
-}
-
 // =================================
 // SCENE
 // =================================
 
-float fbmDistortSDF(vec3 pos, float dist) {
-  float amplitude = 1.0;
-  for (int i = 0; i < FBM_OCTAVES_SDF; ++i) {
-    float newOctave = amplitude * capsuleGridSDF(pos);
-
-    // // intersect new octave with slightly inflated version of terrain
-    // newOctave = sdfSmoothIntersection(newOctave, dist - 0.1 * amplitude, 0.3 * amplitude);
-    // add new octave to terrain
-    dist = sdfSmoothUnion(newOctave, dist, 0.3 * amplitude);
-
-    pos *= 2.0;
-
-    // pos = mat3( 0.00, 1.60, 1.20,
-    //             -1.60, 0.72,-0.96,
-    //             -1.20,-0.96, 1.28 ) * pos;
-
-    amplitude *= 0.5;
-  }
-
-  return dist;
-}
-
 float sceneSDF(vec3 pos) {
-  return planeSDF(pos, -10.0 + perlin(pos * 0.1) * 5.0);
-
-  // return sphereSDF(pos, vec3(0), 1.0);
-  // return planeSDF(pos - vec3(0, 4.0 * perlin(pos / 50.0), 0), -10.0);
-  // return sdfUnion(planeSDF(pos, -10.0), sphereSDF(pos, vec3(0), 1.0));
-  // return fbmDistortSDF(pos, planeSDF(pos, -3.0));
-  // return sdfUnion(planeSDF(pos, -3.0), capsuleGridSDF(pos));
+  return planeSDF(pos, -15.0 + perlin(pos * 0.05) * 12.0 + perlin(pos * 0.01) * 30.0);
 }
 
 // =================================
@@ -301,16 +251,22 @@ Intersection rayMarch(vec2 ndc) {
   Intersection intersection;
 
   vec3 currentPos = u_Eye;
+  float distTraveled = 0.0;
   for (int i = 0; i < MAX_RAY_STEPS; ++i) {
     float distToSurface = sceneSDF(currentPos);
 
     if (distToSurface < EPSILON) {
       intersection.pos = currentPos;
-      intersection.dist = distance(currentPos, u_Eye);
+      intersection.dist = distTraveled;
       return intersection;
     }
 
     currentPos += ray * distToSurface;
+    distTraveled += distToSurface;
+
+    if (distTraveled > MAX_DISTANCE) {
+      break;
+    }
   }
 
   intersection.dist = -1.0;
