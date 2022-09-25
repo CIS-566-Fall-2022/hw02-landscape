@@ -2,7 +2,7 @@
 precision highp float;
 
 #define MAX_RAY_STEPS (128)
-#define MAX_DISTANCE (256.0)
+#define MAX_DISTANCE (512.0)
 #define EPSILON (1e-2)
 
 #define FBM_OCTAVES (4)
@@ -255,7 +255,8 @@ Intersection rayMarch(vec2 ndc) {
   for (int i = 0; i < MAX_RAY_STEPS; ++i) {
     float distToSurface = sceneSDF(currentPos);
 
-    if (distToSurface < EPSILON) {
+    float epsilonMultiplier = 100.0 * (distTraveled / MAX_DISTANCE) + 1.0;
+    if (distToSurface < EPSILON * epsilonMultiplier) {
       intersection.pos = currentPos;
       intersection.dist = distTraveled;
       return intersection;
