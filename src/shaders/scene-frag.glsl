@@ -250,12 +250,12 @@ float fbmDistortSDF(vec3 pos, float dist) {
   for (int i = 0; i < FBM_OCTAVES_SDF; ++i) {
     float newOctave = amplitude * capsuleGridSDF(pos);
 
-    // intersect new octave with slightly inflated version of terrain
-    newOctave = sdfSmoothIntersection(newOctave, dist - 0.1 * amplitude, 0.3 * amplitude);
+    // // intersect new octave with slightly inflated version of terrain
+    // newOctave = sdfSmoothIntersection(newOctave, dist - 0.1 * amplitude, 0.3 * amplitude);
     // add new octave to terrain
     dist = sdfSmoothUnion(newOctave, dist, 0.3 * amplitude);
 
-    // pos *= 2.0;
+    pos *= 2.0;
 
     // pos = mat3( 0.00, 1.60, 1.20,
     //             -1.60, 0.72,-0.96,
@@ -268,11 +268,12 @@ float fbmDistortSDF(vec3 pos, float dist) {
 }
 
 float sceneSDF(vec3 pos) {
+  return planeSDF(pos, -10.0 + perlin(pos * 0.1) * 5.0);
+
   // return sphereSDF(pos, vec3(0), 1.0);
-  // return planeSDF(pos, -10.0);
   // return planeSDF(pos - vec3(0, 4.0 * perlin(pos / 50.0), 0), -10.0);
   // return sdfUnion(planeSDF(pos, -10.0), sphereSDF(pos, vec3(0), 1.0));
-  return fbmDistortSDF(pos, planeSDF(pos, -3.0));
+  // return fbmDistortSDF(pos, planeSDF(pos, -3.0));
   // return sdfUnion(planeSDF(pos, -3.0), capsuleGridSDF(pos));
 }
 
