@@ -2,9 +2,11 @@
 precision highp float;
 
 #define MAX_RAY_STEPS (128)
+// #define MAX_RAY_STEPS (32)
 #define EPSILON (1e-2)
 
 #define FBM_OCTAVES (4)
+#define FBM_OCTAVES_SDF (8)
 
 uniform vec3 u_Eye, u_Ref, u_Right, u_Up;
 uniform vec2 u_Dimensions;
@@ -181,18 +183,18 @@ float sdfSubtract(float d1, float d2) {
   return max(d1, -d2);
 }
 
-float smoothUnion(float d1, float d2, float k) {
+float sdfSmoothUnion(float d1, float d2, float k) {
   float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
   return mix(d2, d1, h) - k * h * (1.0 - h); 
 }
 
-float smoothSubtraction(float d1, float d2, float k) 
+float sdfSmoothSubtraction(float d1, float d2, float k)
 {
   float h = clamp(0.5 - 0.5 * (d2 + d1) / k, 0.0, 1.0 );
   return mix(d2, -d1, h) + k * h * (1.0 - h); 
 }
 
-float smoothIntersection(float d1, float d2, float k)
+float sdfSmoothIntersection(float d1, float d2, float k)
 {
   float h = clamp(0.5 - 0.5 * (d2 - d1) / k, 0.0, 1.0);
   return mix(d2, d1, h) + k * h * (1.0 - h);
@@ -210,15 +212,60 @@ float sphereSDF(vec3 pos, vec3 center, float radius) {
   return distance(pos, center) - radius;
 }
 
+// https://iquilezles.org/articles/fbmsdf/
+float cellSphereSDF(ivec3 gridPoint, vec3 fractPos, ivec3 sphereCenter) {
+  float radius = 0.5 * random3(vec3(gridPoint + sphereCenter)).x;
+  return distance(fractPos, vec3(sphereCenter)) - radius;
+}
+
+float sphereGridSDF(vec3 pos) {
+  ivec3 gridPoint = ivec3(floor(pos));
+  vec3 fractPos = fract(pos);
+  return min(min(min(
+    cellSphereSDF(gridPoint, fractPos, ivec3(0, 0, 0)),
+    cellSphereSDF(gridPoint, fractPos, ivec3(0, 0, 1))
+  ), min(
+    cellSphereSDF(gridPoint, fractPos, ivec3(0, 1, 0)),
+    cellSphereSDF(gridPoint, fractPos, ivec3(0, 1, 1))
+  )), min(min(
+    cellSphereSDF(gridPoint, fractPos, ivec3(1, 0, 0)),
+    cellSphereSDF(gridPoint, fractPos, ivec3(1, 0, 1))
+  ), min(
+    cellSphereSDF(gridPoint, fractPos, ivec3(1, 1, 0)),
+    cellSphereSDF(gridPoint, fractPos, ivec3(1, 1, 1))
+  )));
+}
+
 // =================================
 // SCENE
 // =================================
+
+float fbmDistortSDF(vec3 pos, float dist) {
+  float amplitude = 1.0;
+  for (int i = 0; i < FBM_OCTAVES_SDF; ++i) {
+    float newOctave = amplitude * sphereGridSDF(pos);
+
+    // intersect new octave with slightly inflated version of terrain
+    newOctave = sdfSmoothIntersection(newOctave, dist - 0.1 * amplitude, 0.3 * amplitude);
+    // add new octave to terrain
+    dist = sdfSmoothUnion(newOctave, dist, 0.3 * amplitude);
+
+    pos = mat3( 0.00, 1.60, 1.20,
+                -1.60, 0.72,-0.96,
+                -1.20,-0.96, 1.28 ) * pos;
+
+    amplitude *= 0.5;
+  }
+
+  return dist;
+}
 
 float sceneSDF(vec3 pos) {
   // return sphereSDF(pos, vec3(0), 1.0);
   // return planeSDF(pos, -10.0);
   // return planeSDF(pos - vec3(0, 4.0 * perlin(pos / 50.0), 0), -10.0);
   return sdfUnion(planeSDF(pos, -10.0), sphereSDF(pos, vec3(0), 1.0));
+  // return fbmDistortSDF(pos * vec3(0.1, 0.01, 0.1), planeSDF(pos, -3.0));
 }
 
 // =================================
