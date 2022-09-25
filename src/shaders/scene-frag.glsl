@@ -6,7 +6,7 @@ precision highp float;
 #define EPSILON (1e-2)
 
 #define FBM_OCTAVES (4)
-#define FBM_OCTAVES_SDF (8)
+#define FBM_OCTAVES_SDF (4)
 
 uniform vec3 u_Eye, u_Ref, u_Right, u_Up;
 uniform vec2 u_Dimensions;
@@ -212,28 +212,33 @@ float sphereSDF(vec3 pos, vec3 center, float radius) {
   return distance(pos, center) - radius;
 }
 
-// https://iquilezles.org/articles/fbmsdf/
-float cellSphereSDF(ivec3 gridPoint, vec3 fractPos, ivec3 sphereCenter) {
-  float radius = 0.5 * random3(vec3(gridPoint + sphereCenter)).x;
-  return distance(fractPos, vec3(sphereCenter)) - radius;
+float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
+  vec3 pa = pos - a;
+  vec3 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - r;
 }
 
-float sphereGridSDF(vec3 pos) {
+float cellCapsuleSDF(ivec3 gridPoint, vec3 fractPos, ivec3 capsulePos1) {
+  vec3 random = random3(vec3(gridPoint + capsulePos1));
+  float radius = 0.2 + 0.3 * random.x;
+  capsulePos1.y = gridPoint.y;
+  vec3 capsulePos2 = vec3(capsulePos1) + vec3(0, 0.5 + random.y, 0);
+  return capsuleSDF(fractPos, vec3(capsulePos1), capsulePos2, radius);
+}
+
+float capsuleGridSDF(vec3 pos) {
   ivec3 gridPoint = ivec3(floor(pos));
+  gridPoint.y = -3;
   vec3 fractPos = fract(pos);
-  return min(min(min(
-    cellSphereSDF(gridPoint, fractPos, ivec3(0, 0, 0)),
-    cellSphereSDF(gridPoint, fractPos, ivec3(0, 0, 1))
+  fractPos.y = pos.y;
+  return min(min(
+    cellCapsuleSDF(gridPoint, fractPos, ivec3(0, 0, 0)),
+    cellCapsuleSDF(gridPoint, fractPos, ivec3(1, 0, 0))
   ), min(
-    cellSphereSDF(gridPoint, fractPos, ivec3(0, 1, 0)),
-    cellSphereSDF(gridPoint, fractPos, ivec3(0, 1, 1))
-  )), min(min(
-    cellSphereSDF(gridPoint, fractPos, ivec3(1, 0, 0)),
-    cellSphereSDF(gridPoint, fractPos, ivec3(1, 0, 1))
-  ), min(
-    cellSphereSDF(gridPoint, fractPos, ivec3(1, 1, 0)),
-    cellSphereSDF(gridPoint, fractPos, ivec3(1, 1, 1))
-  )));
+    cellCapsuleSDF(gridPoint, fractPos, ivec3(0, 0, 1)),
+    cellCapsuleSDF(gridPoint, fractPos, ivec3(1, 0, 1))
+  ));
 }
 
 // =================================
@@ -243,16 +248,18 @@ float sphereGridSDF(vec3 pos) {
 float fbmDistortSDF(vec3 pos, float dist) {
   float amplitude = 1.0;
   for (int i = 0; i < FBM_OCTAVES_SDF; ++i) {
-    float newOctave = amplitude * sphereGridSDF(pos);
+    float newOctave = amplitude * capsuleGridSDF(pos);
 
     // intersect new octave with slightly inflated version of terrain
     newOctave = sdfSmoothIntersection(newOctave, dist - 0.1 * amplitude, 0.3 * amplitude);
     // add new octave to terrain
     dist = sdfSmoothUnion(newOctave, dist, 0.3 * amplitude);
 
-    pos = mat3( 0.00, 1.60, 1.20,
-                -1.60, 0.72,-0.96,
-                -1.20,-0.96, 1.28 ) * pos;
+    // pos *= 2.0;
+
+    // pos = mat3( 0.00, 1.60, 1.20,
+    //             -1.60, 0.72,-0.96,
+    //             -1.20,-0.96, 1.28 ) * pos;
 
     amplitude *= 0.5;
   }
@@ -264,8 +271,9 @@ float sceneSDF(vec3 pos) {
   // return sphereSDF(pos, vec3(0), 1.0);
   // return planeSDF(pos, -10.0);
   // return planeSDF(pos - vec3(0, 4.0 * perlin(pos / 50.0), 0), -10.0);
-  return sdfUnion(planeSDF(pos, -10.0), sphereSDF(pos, vec3(0), 1.0));
-  // return fbmDistortSDF(pos * vec3(0.1, 0.01, 0.1), planeSDF(pos, -3.0));
+  // return sdfUnion(planeSDF(pos, -10.0), sphereSDF(pos, vec3(0), 1.0));
+  return fbmDistortSDF(pos, planeSDF(pos, -3.0));
+  // return sdfUnion(planeSDF(pos, -3.0), capsuleGridSDF(pos));
 }
 
 // =================================
