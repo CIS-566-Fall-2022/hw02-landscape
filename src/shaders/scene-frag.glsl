@@ -2,11 +2,10 @@
 precision highp float;
 
 #define MAX_RAY_STEPS (128)
-#define MAX_DISTANCE (512.0)
+#define MAX_DISTANCE (1024.0)
 #define EPSILON (1e-2)
 
 #define FBM_OCTAVES (4)
-#define FBM_OCTAVES_SDF (4)
 
 uniform vec3 u_Eye, u_Ref, u_Right, u_Up;
 uniform vec2 u_Dimensions;
@@ -18,11 +17,33 @@ out vec4 out_Col;
 const float tanFovY2 = tan(radians(45.0) / 2.0);
 
 // =================================
+// MATH
+// =================================
+
+float bias(float b, float t) {
+  return pow(t, log(b) / log(0.5));
+}
+
+float gain(float g, float t) {
+  if (t < 0.5) {
+    return bias(1.0 - g, 2.0 * t) / 2.0;
+  } else {
+    return 1.0 - bias(1.0 - g, 2.0 - 2.0 * t) / 2.0;
+  }
+}
+
+// =================================
 // NOISE
 // =================================
 
 float random1(float p) {
   return fract(sin(p * 592.4) * 102934.239);
+}
+
+vec2 random2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(602.3, 448.9)),
+                        dot(p, vec2(192.4, 672.6))
+                  )) * 48123.492);
 }
 
 vec3 random3(vec3 p) {
@@ -49,6 +70,15 @@ float surflet(float p, float gridPoint) {
   return height * t;
 }
 
+float surflet(vec2 p, vec2 gridPoint) {
+  vec2 t2 = abs(p - gridPoint);
+  vec2 t = vec2(1.f) - 6.f * pow(t2, vec2(5.f)) + 15.f * pow(t2, vec2(4.f)) - 10.f * pow(t2, vec2(3.f));
+  vec2 gradient = random2(gridPoint) * 2. - vec2(1.);
+  vec2 diff = p - gridPoint;
+  float height = dot(diff, gradient);
+  return height * t.x * t.y;
+}
+
 float surflet(vec3 p, vec3 gridPoint) {
   vec3 t2 = abs(p - gridPoint);
   vec3 t = vec3(1.f) - 6.f * pow(t2, vec3(5.f)) + 15.f * pow(t2, vec3(4.f)) - 10.f * pow(t2, vec3(3.f));
@@ -71,6 +101,16 @@ float perlin(float p) {
 	float surfletSum = 0.f;
 	for (int dx = 0; dx <= 1; ++dx) {
     surfletSum += surflet(p, floor(p) + float(dx));
+	}
+	return surfletSum;
+}
+
+float perlin(vec2 p) {
+	float surfletSum = 0.f;
+	for (int dx = 0; dx <= 1; ++dx) {
+		for (int dy = 0; dy <= 1; ++dy) {
+      surfletSum += surflet(p, floor(p) + vec2(dx, dy));
+		}
 	}
 	return surfletSum;
 }
@@ -105,7 +145,7 @@ float perlin(vec3 p, float t) {
   return perlin(vec4(p, t));
 }
 
-float fbm(vec4 p) {
+float fbm(vec2 p) {
   float value = 0.0;
   float amplitude = 0.5;
   for (int i = 0; i < FBM_OCTAVES; ++i) {
@@ -127,6 +167,17 @@ float fbm(vec3 p) {
   return value;
 }
 
+float fbm(vec4 p) {
+  float value = 0.0;
+  float amplitude = 0.5;
+  for (int i = 0; i < FBM_OCTAVES; ++i) {
+    value += amplitude * ((perlin(p) + 1.0) / 2.0);
+    p *= 2.0;
+    amplitude *= 0.5;
+  }
+  return value;
+}
+
 float fbm(vec3 p, float t) {
   return fbm(vec4(p, t));
 }
@@ -135,6 +186,21 @@ struct WorleyInfo {
   float dist;
   vec3 color;
 };
+
+float worley(vec2 uv) {
+  vec2 uvInt = floor(uv);
+  vec2 uvFract = uv - uvInt;
+  float minDist = 1.0f;
+  for (int x = -1; x <= 1; ++x) {
+    for (int y = -1; y <= 1; ++y) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 point = random2(uvInt + neighbor);
+      vec2 diff = neighbor + point - uvFract;
+      minDist = min(minDist, length(diff));
+    }
+  }
+  return minDist;
+}
 
 WorleyInfo worley(vec4 uv) {
   vec4 uvInt = floor(uv);
@@ -224,7 +290,9 @@ float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
 // =================================
 
 float sceneSDF(vec3 pos) {
-  return planeSDF(pos, -15.0 + perlin(pos * 0.05) * 12.0 + perlin(pos * 0.01) * 30.0);
+  float mountainsNoise = fbm(pos.xz * 0.01);
+  mountainsNoise = 4.0 * pow(mountainsNoise - 0.5, 2.0);
+  return planeSDF(pos, -60.0 + mountainsNoise * 250.0);
 }
 
 // =================================
@@ -282,11 +350,41 @@ vec3 estimateNormal(vec3 p) {
     ));
 }
 
+const vec3 grassColor1 = vec3(9.0, 237.0, 13.0) / 255.0 * 0.7;
+const vec3 grassColor2 = vec3(7.0, 186.0, 10.0) / 255.0 * 0.7;
+const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.55;
+const vec3 rockColor2 = vec3(89.0, 96.0, 97.0) / 255.0;
+
+vec3 getTerrainColor(vec3 pos) {
+  float grassNoise = perlin(pos * 0.7);
+  vec3 grassColor = mix(grassColor1, grassColor2, grassNoise);
+
+  float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5);
+  rockNoise = smoothstep(0.3, 0.7, rockNoise);
+  vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
+
+  vec3 finalColor = mix(grassColor, rockColor, smoothstep(-60.0, -53.0, pos.y));
+
+  return finalColor;
+}
+
 vec3 getSkyColor(vec2 ndc) {
   return vec3(135.0, 206.0, 235.0) / 255.0;
 }
 
-const vec3 vecToLight = normalize(vec3(1, 1, 0));
+struct DirectionalLight {
+  vec3 vecToLight;
+  vec3 color;
+};
+
+#define SUNLIGHT_COLOR vec3(1.0, 0.93, 0.89)
+#define FILL_LIGHT_COLOR vec3(0.53, 0.81, 0.92)
+
+const DirectionalLight[3] lights = DirectionalLight[3](
+  DirectionalLight(normalize(vec3(1, 1, 0)), SUNLIGHT_COLOR), // key
+  DirectionalLight(normalize(vec3(0, 1, 0)), FILL_LIGHT_COLOR * 0.2), // fill
+  DirectionalLight(normalize(vec3(-1.5, 0, 1)), SUNLIGHT_COLOR * 0.2) // fake GI
+);
 
 vec3 getColor(vec2 ndc) {
   Intersection isect = rayMarch(ndc);
@@ -294,7 +392,14 @@ vec3 getColor(vec2 ndc) {
   if (isect.dist > 0.0) {
     vec3 nor = estimateNormal(isect.pos);
 
-    return vec3(1, 0, 0) * max(0.0, dot(nor, vecToLight));
+    vec3 terrainColor = getTerrainColor(isect.pos);
+
+    vec3 finalColor = vec3(0);
+    for (int i = 0; i < 3; ++i) {
+      finalColor += terrainColor * lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
+    }
+
+    return finalColor;
   } else {
     return getSkyColor(ndc);
   }
