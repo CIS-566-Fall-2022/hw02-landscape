@@ -83,6 +83,10 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
+
+    flat.setEyeRefUp(camera.controls.eye, camera.controls.center, camera.controls.up);
+    flat.setDimensions(window.innerWidth, window.innerHeight);
+    
     renderer.render(camera, flat, [
       square,
     ], time);
