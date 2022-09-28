@@ -305,9 +305,13 @@ float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
 // SCENE
 // =================================
 
+const float terrainOffset = -90.0;
+const float terrainAmplitude = 100.0;
+const float terrainMaxHeight = terrainOffset + terrainAmplitude;
+
 float sceneSDF(vec3 pos) {
   float mountainsNoise = fbmRotate(pos.xz * 0.02);
-  return planeSDF(pos, -90.0 + mountainsNoise * 100.0);
+  return planeSDF(pos, terrainOffset + mountainsNoise * terrainAmplitude);
 }
 
 // =================================
@@ -374,10 +378,36 @@ struct DirectionalLight {
 #define FILL_LIGHT_COLOR vec3(0.53, 0.81, 0.92)
 
 const DirectionalLight[3] lights = DirectionalLight[3](
-  DirectionalLight(normalize(vec3(1, 1, 0)), SUNLIGHT_COLOR), // key
-  DirectionalLight(normalize(vec3(0, 1, 0)), FILL_LIGHT_COLOR * 0.2), // fill
-  DirectionalLight(normalize(vec3(-1.5, 0, 1)), SUNLIGHT_COLOR * 0.2) // fake GI
+  DirectionalLight(normalize(vec3(1, 1, 0)), SUNLIGHT_COLOR * 1.2), // key
+  DirectionalLight(normalize(vec3(0, 1, 0)), FILL_LIGHT_COLOR * 0.5), // fill
+  DirectionalLight(normalize(vec3(-1.5, 0, 1)), SUNLIGHT_COLOR * 0.6) // fake GI
 );
+
+const float shadowK = 2.0;
+
+float softShadow(vec3 p) {
+  const vec3 rayDirection = lights[0].vecToLight;
+  float t = 0.1;
+  vec3 currentPos = p + t * rayDirection;
+
+  float result = 1.0;
+  float prevH = 1e20;
+  while (currentPos.y < terrainMaxHeight) {
+    float h = sceneSDF(currentPos);
+    if (h < EPSILON) {
+      return 0.0;
+    }
+
+    float y = (h * h) / (2.0 * prevH);
+    float d = sqrt(h * h - y * y);
+
+    result = min(result, shadowK * d / max(0.0, t - y));
+    t += h;
+    currentPos = p + t * rayDirection;
+  }
+
+  return result;
+}
 
 const vec3 grassColor1 = vec3(9.0, 237.0, 13.0) / 255.0 * 0.7;
 const vec3 grassColor2 = vec3(7.0, 186.0, 10.0) / 255.0 * 0.7;
@@ -410,12 +440,12 @@ vec3 getColor(vec2 ndc) {
   if (isect.t > 0.0) {
     vec3 nor = estimateNormal(isect.pos);
 
-    vec3 terrainColor = getTerrainColor(isect.pos);
-
     vec3 finalColor = vec3(0);
-    for (int i = 0; i < 3; ++i) {
-      finalColor += terrainColor * lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
+    finalColor += lights[0].color * max(0.0, dot(nor, lights[0].vecToLight)) * softShadow(isect.pos);
+    for (int i = 1; i < 3; ++i) {
+      finalColor += lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
     }
+    finalColor *= getTerrainColor(isect.pos);
 
     float lambda = exp(-0.0025 * isect.t);
     finalColor = mix(getSkyColor(ndc), finalColor, lambda);
