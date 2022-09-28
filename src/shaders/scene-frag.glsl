@@ -5,7 +5,7 @@ precision highp float;
 #define MAX_DISTANCE (1024.0)
 #define EPSILON (1e-2)
 
-#define FBM_OCTAVES (4)
+#define FBM_OCTAVES (8)
 
 uniform vec3 u_Eye, u_Ref, u_Right, u_Up;
 uniform vec2 u_Dimensions;
@@ -156,6 +156,22 @@ float fbm(vec2 p) {
   return value;
 }
 
+const mat2 fbmRotateMat = mat2(
+  0.8, 0.6,
+  -0.6, 0.8
+);
+
+float fbmRotate(vec2 p) {
+  float value = 0.0;
+  float amplitude = 0.5;
+  for (int i = 0; i < FBM_OCTAVES; ++i) {
+    value += amplitude * ((perlin(p) + 1.0) / 2.0);
+    p = 2.0 * fbmRotateMat * p;
+    amplitude *= 0.5;
+  }
+  return value;
+}
+
 float fbm(vec3 p) {
   float value = 0.0;
   float amplitude = 0.5;
@@ -290,9 +306,8 @@ float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
 // =================================
 
 float sceneSDF(vec3 pos) {
-  float mountainsNoise = fbm(pos.xz * 0.01);
-  mountainsNoise = 4.0 * pow(mountainsNoise - 0.5, 2.0);
-  return planeSDF(pos, -60.0 + mountainsNoise * 250.0);
+  float mountainsNoise = fbmRotate(pos.xz * 0.02);
+  return planeSDF(pos, -90.0 + mountainsNoise * 100.0);
 }
 
 // =================================
@@ -311,7 +326,7 @@ vec3 getRay(vec2 ndc) {
 
 struct Intersection {
   vec3 pos;
-  float dist;
+  float t;
 };
 
 Intersection rayMarch(vec2 ndc) {
@@ -319,26 +334,26 @@ Intersection rayMarch(vec2 ndc) {
   Intersection intersection;
 
   vec3 currentPos = u_Eye;
-  float distTraveled = 0.0;
+  float t = 0.0;
   for (int i = 0; i < MAX_RAY_STEPS; ++i) {
     float distToSurface = sceneSDF(currentPos);
 
-    float epsilonMultiplier = 100.0 * (distTraveled / MAX_DISTANCE) + 1.0;
+    float epsilonMultiplier = 100.0 * (t / MAX_DISTANCE) + 1.0;
     if (distToSurface < EPSILON * epsilonMultiplier) {
       intersection.pos = currentPos;
-      intersection.dist = distTraveled;
+      intersection.t = t;
       return intersection;
     }
 
     currentPos += ray * distToSurface;
-    distTraveled += distToSurface;
+    t += distToSurface;
 
-    if (distTraveled > MAX_DISTANCE) {
+    if (t > MAX_DISTANCE) {
       break;
     }
   }
 
-  intersection.dist = -1.0;
+  intersection.t = -1.0;
   return intersection;
 }
 
@@ -381,17 +396,18 @@ vec3 getTerrainColor(vec3 pos) {
   vec3 finalColor = mix(grassColor, rockColor, smoothstep(-60.0, -53.0, pos.y));
   finalColor = mix(finalColor, iceColor, smoothstep(-45.0, -42.0, pos.y));
 
-  return finalColor;
+  // return finalColor;
+  return vec3(1.0, 0.0, 0.0);
 }
 
 vec3 getSkyColor(vec2 ndc) {
-  return vec3(135.0, 206.0, 235.0) / 255.0;
+  return vec3(175.0, 212.0, 255.0) / 255.0;
 }
 
 vec3 getColor(vec2 ndc) {
   Intersection isect = rayMarch(ndc);
 
-  if (isect.dist > 0.0) {
+  if (isect.t > 0.0) {
     vec3 nor = estimateNormal(isect.pos);
 
     vec3 terrainColor = getTerrainColor(isect.pos);
@@ -400,6 +416,9 @@ vec3 getColor(vec2 ndc) {
     for (int i = 0; i < 3; ++i) {
       finalColor += terrainColor * lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
     }
+
+    float lambda = exp(-0.0025 * isect.t);
+    finalColor = mix(getSkyColor(ndc), finalColor, lambda);
 
     return finalColor;
   } else {
