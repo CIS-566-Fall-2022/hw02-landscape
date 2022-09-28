@@ -67,6 +67,8 @@ function main() {
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
 
+
+
   const flat = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
@@ -84,6 +86,7 @@ function main() {
     renderer.clear();
     processKeyPresses();
 
+    // Update camera in the scene
     flat.setEyeRefUp(camera.controls.eye, camera.controls.center, camera.controls.up);
     flat.setDimensions(window.innerWidth, window.innerHeight);
     
