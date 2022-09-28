@@ -385,7 +385,7 @@ const DirectionalLight[3] lights = DirectionalLight[3](
   DirectionalLight(normalize(vec3(-1.5, 0, 1)), SUNLIGHT_COLOR * 0.6) // fake GI
 );
 
-const float shadowK = 1.5;
+const float shadowK = 1.1;
 
 float softShadow(vec3 p) {
   const vec3 rayDirection = lights[0].vecToLight;
@@ -463,7 +463,9 @@ vec3 getColor(vec2 ndc) {
     vec3 nor = estimateNormal(isect.pos);
 
     vec3 finalColor = vec3(0);
-    finalColor += lights[0].color * max(0.0, dot(nor, lights[0].vecToLight)) * softShadow(isect.pos);
+    finalColor += lights[0].color * max(0.0, dot(nor, lights[0].vecToLight)) 
+        * mix(0.5, 1.0, softShadow(isect.pos))
+        * smoothstep(0.5, 0.3, cloudCoverage(isect.pos, lights[0].vecToLight));
     for (int i = 1; i < 3; ++i) {
       finalColor += lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
     }
