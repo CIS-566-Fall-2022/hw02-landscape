@@ -308,10 +308,13 @@ float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
 const float terrainOffset = -90.0;
 const float terrainAmplitude = 100.0;
 const float terrainMaxHeight = terrainOffset + terrainAmplitude;
+const float waterHeight = -48.0;
 
 float sceneSDF(vec3 pos) {
   float mountainsNoise = fbmRotate(pos.xz * 0.02);
-  return planeSDF(pos, terrainOffset + mountainsNoise * terrainAmplitude);
+  float mountainsSDF = planeSDF(pos, terrainOffset + mountainsNoise * terrainAmplitude);
+  float waterSDF = planeSDF(pos, waterHeight);
+  return sdfUnion(mountainsSDF, waterSDF);
 }
 
 // =================================
@@ -383,7 +386,7 @@ const DirectionalLight[3] lights = DirectionalLight[3](
   DirectionalLight(normalize(vec3(-1.5, 0, 1)), SUNLIGHT_COLOR * 0.6) // fake GI
 );
 
-const float shadowK = 2.0;
+const float shadowK = 1.5;
 
 float softShadow(vec3 p) {
   const vec3 rayDirection = lights[0].vecToLight;
@@ -409,25 +412,26 @@ float softShadow(vec3 p) {
   return result;
 }
 
-const vec3 grassColor1 = vec3(9.0, 237.0, 13.0) / 255.0 * 0.7;
-const vec3 grassColor2 = vec3(7.0, 186.0, 10.0) / 255.0 * 0.7;
+const vec3 waterColor1 = vec3(35.0, 137.0, 218.0) / 255.0 * 0.5;
+const vec3 waterColor2 = vec3(28.0, 163.0, 236.0) / 255.0 * 0.7;
 const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.55;
 const vec3 rockColor2 = vec3(89.0, 96.0, 97.0) / 255.0;
-const vec3 iceColor = vec3(219.0, 241.0, 253.0) / 255.0;
+const vec3 snowColor = vec3(219.0, 241.0, 253.0) / 255.0;
 
-vec3 getTerrainColor(vec3 pos) {
-  float grassNoise = perlin(pos * 0.7);
-  vec3 grassColor = mix(grassColor1, grassColor2, grassNoise);
+vec3 getTerrainColor(vec3 pos, vec3 nor) {
+  float waterNoise = perlin(pos * 0.05);
+  vec3 waterColor = mix(waterColor1, waterColor2, waterNoise);
 
   float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5);
   rockNoise = smoothstep(0.3, 0.7, rockNoise);
   vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
 
-  vec3 finalColor = mix(grassColor, rockColor, smoothstep(-60.0, -53.0, pos.y));
-  finalColor = mix(finalColor, iceColor, smoothstep(-45.0, -42.0, pos.y));
+  float snowSlopeFactor = smoothstep(0.83, 0.75, dot(nor, vec3(0, 1, 0)));
 
-  // return finalColor;
-  return vec3(1.0, 0.0, 0.0);
+  vec3 finalColor = (pos.y > waterHeight + 0.3) ? rockColor : waterColor;
+  finalColor = mix(finalColor, snowColor, smoothstep(-38.0, -35.0, pos.y) * snowSlopeFactor);
+
+  return finalColor;
 }
 
 vec3 getSkyColor(vec2 ndc) {
@@ -445,7 +449,9 @@ vec3 getColor(vec2 ndc) {
     for (int i = 1; i < 3; ++i) {
       finalColor += lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
     }
-    finalColor *= getTerrainColor(isect.pos);
+    finalColor *= getTerrainColor(isect.pos, nor);
+
+    // finalColor = vec3(softShadow(isect.pos));
 
     float lambda = exp(-0.0025 * isect.t);
     finalColor = mix(getSkyColor(ndc), finalColor, lambda);
