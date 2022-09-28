@@ -411,7 +411,7 @@ float softShadow(vec3 p) {
   return result;
 }
 
-const float cloudsHeight = 100.0;
+const float cloudsHeight = 110.0;
 
 float cloudCoverage(vec3 p, vec3 dir) {
   // assumes camera is below clouds
