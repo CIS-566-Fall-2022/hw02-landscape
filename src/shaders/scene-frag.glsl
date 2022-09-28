@@ -336,8 +336,7 @@ struct Intersection {
   float t;
 };
 
-Intersection rayMarch(vec2 ndc) {
-  vec3 ray = getRay(ndc);
+Intersection rayMarch(vec3 dir) {
   Intersection intersection;
 
   vec3 currentPos = u_Eye;
@@ -352,7 +351,7 @@ Intersection rayMarch(vec2 ndc) {
       return intersection;
     }
 
-    currentPos += ray * distToSurface;
+    currentPos += dir * distToSurface;
     t += distToSurface;
 
     if (t > MAX_DISTANCE) {
@@ -412,6 +411,21 @@ float softShadow(vec3 p) {
   return result;
 }
 
+const float cloudsHeight = 100.0;
+
+float cloudCoverage(vec3 p, vec3 dir) {
+  // assumes camera is below clouds
+  if (dir.y < 0.05) {
+    return 0.0;
+  }
+
+  float t = (cloudsHeight - p.y) / dir.y;
+  vec3 cloudsPos = p + dir * t;
+  cloudsPos.x += 1.2 * u_Time;
+  float cloudsFBM = fbm(vec3(cloudsPos.xz * 0.01, u_Time / 150.0));
+  return smoothstep(0.4, 0.8, cloudsFBM);
+}
+
 const vec3 waterColor1 = vec3(35.0, 137.0, 218.0) / 255.0 * 0.5;
 const vec3 waterColor2 = vec3(28.0, 163.0, 236.0) / 255.0 * 0.7;
 const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.55;
@@ -434,12 +448,16 @@ vec3 getTerrainColor(vec3 pos, vec3 nor) {
   return finalColor;
 }
 
-vec3 getSkyColor(vec2 ndc) {
+vec3 getSkyColor(vec3 dir) {
   return vec3(175.0, 212.0, 255.0) / 255.0;
 }
 
+const vec3 fogColor = vec3(175.0, 212.0, 255.0) / 255.0;
+const vec3 cloudsColor = vec3(1.05);
+
 vec3 getColor(vec2 ndc) {
-  Intersection isect = rayMarch(ndc);
+  vec3 cameraRay = getRay(ndc);
+  Intersection isect = rayMarch(cameraRay);
 
   if (isect.t > 0.0) {
     vec3 nor = estimateNormal(isect.pos);
@@ -451,14 +469,15 @@ vec3 getColor(vec2 ndc) {
     }
     finalColor *= getTerrainColor(isect.pos, nor);
 
-    // finalColor = vec3(softShadow(isect.pos));
-
     float lambda = exp(-0.0025 * isect.t);
-    finalColor = mix(getSkyColor(ndc), finalColor, lambda);
+    finalColor = mix(fogColor, finalColor, lambda);
 
     return finalColor;
   } else {
-    return getSkyColor(ndc);
+    vec3 skyColor = getSkyColor(cameraRay);
+    float clouds = cloudCoverage(u_Eye, cameraRay);
+
+    return mix(skyColor, cloudsColor, clouds);
   }
 }
 
