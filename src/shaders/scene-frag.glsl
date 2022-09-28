@@ -463,9 +463,10 @@ vec3 getColor(vec2 ndc) {
     vec3 nor = estimateNormal(isect.pos);
 
     vec3 finalColor = vec3(0);
+    float totalShadow = min(1.0, softShadow(isect.pos) 
+        + smoothstep(0.4, 0.2, cloudCoverage(isect.pos, lights[0].vecToLight)));
     finalColor += lights[0].color * max(0.0, dot(nor, lights[0].vecToLight)) 
-        * mix(0.5, 1.0, softShadow(isect.pos))
-        * smoothstep(0.5, 0.3, cloudCoverage(isect.pos, lights[0].vecToLight));
+        * mix(0.35, 1.0, totalShadow);
     for (int i = 1; i < 3; ++i) {
       finalColor += lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
     }
