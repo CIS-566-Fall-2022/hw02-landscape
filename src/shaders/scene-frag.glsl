@@ -1,11 +1,11 @@
 #version 300 es
 precision highp float;
 
-#define MAX_RAY_STEPS (128)
-#define MAX_DISTANCE (1024.0)
-#define EPSILON (1e-2)
+#define FOV_Y_DEGREES 55.0
 
-#define FBM_OCTAVES (8)
+#define MAX_RAY_STEPS 128
+#define MAX_DISTANCE 1024.0
+#define EPSILON 1e-2
 
 uniform vec3 u_Eye, u_Ref, u_Right, u_Up;
 uniform vec2 u_Dimensions;
@@ -14,7 +14,7 @@ uniform float u_Time;
 in vec2 fs_Pos;
 out vec4 out_Col;
 
-const float tanFovY2 = tan(radians(45.0) / 2.0);
+const float tanFovY2 = tan(radians(FOV_Y_DEGREES) / 2.0);
 
 // =================================
 // MATH
@@ -145,10 +145,10 @@ float perlin(vec3 p, float t) {
   return perlin(vec4(p, t));
 }
 
-float fbm(vec2 p) {
+float fbm(vec2 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
-  for (int i = 0; i < FBM_OCTAVES; ++i) {
+  for (int i = 0; i < octaves; ++i) {
     value += amplitude * ((perlin(p) + 1.0) / 2.0);
     p *= 2.0;
     amplitude *= 0.5;
@@ -161,10 +161,10 @@ const mat2 fbmRotateMat = mat2(
   -0.6, 0.8
 );
 
-float fbmRotate(vec2 p) {
+float fbmRotate(vec2 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
-  for (int i = 0; i < FBM_OCTAVES; ++i) {
+  for (int i = 0; i < octaves; ++i) {
     value += amplitude * ((perlin(p) + 1.0) / 2.0);
     p = 2.0 * fbmRotateMat * p;
     amplitude *= 0.5;
@@ -172,10 +172,10 @@ float fbmRotate(vec2 p) {
   return value;
 }
 
-float fbm(vec3 p) {
+float fbm(vec3 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
-  for (int i = 0; i < FBM_OCTAVES; ++i) {
+  for (int i = 0; i < octaves; ++i) {
     value += amplitude * ((perlin(p) + 1.0) / 2.0);
     p *= 2.0;
     amplitude *= 0.5;
@@ -183,19 +183,15 @@ float fbm(vec3 p) {
   return value;
 }
 
-float fbm(vec4 p) {
+float fbm(vec4 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
-  for (int i = 0; i < FBM_OCTAVES; ++i) {
+  for (int i = 0; i < octaves; ++i) {
     value += amplitude * ((perlin(p) + 1.0) / 2.0);
     p *= 2.0;
     amplitude *= 0.5;
   }
   return value;
-}
-
-float fbm(vec3 p, float t) {
-  return fbm(vec4(p, t));
 }
 
 struct WorleyInfo {
@@ -316,7 +312,7 @@ struct Terrain {
 };
 
 Terrain sceneSDF(vec3 pos) {
-  float mountainsNoise = fbmRotate(pos.xz * 0.02);
+  float mountainsNoise = fbmRotate(pos.xz * 0.02, 8);
   float mountainsSDF = planeSDF(pos, terrainOffset + mountainsNoise * terrainAmplitude);
   float waterSDF = planeSDF(pos, waterHeight);
 
@@ -377,11 +373,11 @@ Intersection rayMarch(vec3 dir) {
 }
 
 vec3 estimateNormal(vec3 p) {
-    return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)).dist - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)).dist,
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)).dist - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)).dist,
-        sceneSDF(vec3(p.x, p.y, p.z + EPSILON)).dist - sceneSDF(vec3(p.x, p.y, p.z - EPSILON)).dist
-    ));
+  return normalize(vec3(
+    sceneSDF(vec3(p.x + EPSILON, p.y, p.z)).dist - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)).dist,
+    sceneSDF(vec3(p.x, p.y + EPSILON, p.z)).dist - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)).dist,
+    sceneSDF(vec3(p.x, p.y, p.z + EPSILON)).dist - sceneSDF(vec3(p.x, p.y, p.z - EPSILON)).dist
+  ));
 }
 
 struct DirectionalLight {
@@ -393,7 +389,7 @@ struct DirectionalLight {
 #define FILL_LIGHT_COLOR vec3(0.53, 0.81, 0.92)
 
 const DirectionalLight[3] lights = DirectionalLight[3](
-  DirectionalLight(normalize(vec3(1, 1, 0)), SUNLIGHT_COLOR * 1.2), // key
+  DirectionalLight(normalize(vec3(0, 0.8, 1)), SUNLIGHT_COLOR * 1.2), // key
   DirectionalLight(normalize(vec3(0, 1, 0)), FILL_LIGHT_COLOR * 0.5), // fill
   DirectionalLight(normalize(vec3(-1.5, 0, 1)), SUNLIGHT_COLOR * 0.6) // fake GI
 );
@@ -434,14 +430,14 @@ float cloudCoverage(vec3 p, vec3 dir) {
 
   float t = (cloudsHeight - p.y) / dir.y;
   vec3 cloudsPos = p + dir * t;
-  cloudsPos.x += 1.2 * u_Time;
-  float cloudsFBM = fbm(vec3(cloudsPos.xz * 0.01, u_Time / 150.0));
+  cloudsPos.z += 1.2 * u_Time;
+  float cloudsFBM = fbm(vec3(cloudsPos.xz * 0.01, u_Time / 150.0), 6);
   return smoothstep(0.4, 0.8, cloudsFBM);
 }
 
 const vec3 waterColor1 = vec3(35.0, 137.0, 218.0) / 255.0 * 0.5;
 const vec3 waterColor2 = vec3(28.0, 163.0, 236.0) / 255.0 * 0.7;
-const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.55;
+const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.4;
 const vec3 rockColor2 = vec3(89.0, 96.0, 97.0) / 255.0;
 const vec3 snowColor = vec3(219.0, 241.0, 253.0) / 255.0;
 
@@ -449,8 +445,9 @@ vec3 getTerrainColor(vec3 pos, vec3 nor, int material) {
   vec3 finalColor;
 
   if (material == 1) {
-    float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5);
+    float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5, 4);
     rockNoise = smoothstep(0.3, 0.7, rockNoise);
+    rockNoise = gain(0.9, rockNoise);
     vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
 
     float snowSlopeFactor = smoothstep(0.83, 0.75, dot(nor, vec3(0, 1, 0)));
@@ -464,11 +461,19 @@ vec3 getTerrainColor(vec3 pos, vec3 nor, int material) {
   return finalColor;
 }
 
+const vec3 skyColor1 = vec3(214.0, 242.0, 255.0) / 255.0;
+const vec3 skyColor2 = vec3(175.0, 212.0, 255.0) / 255.0;
+
 vec3 getSkyColor(vec3 dir) {
-  return vec3(175.0, 212.0, 255.0) / 255.0;
+  float perturb = fbm(dir * 10.0, 4);
+  float cells = worley(dir * 10.0 + vec3(perturb * 10.0), u_Time / 100.0).dist;
+  cells = (cells * 2.0) - 1.0;
+
+  float gradientFactor = smoothstep(-0.1, 0.5, dir.y);
+  gradientFactor += (cells * 0.2);
+  return mix(skyColor1, skyColor2, gradientFactor);
 }
 
-const vec3 fogColor = vec3(175.0, 212.0, 255.0) / 255.0;
 const vec3 cloudsColor = vec3(1.05);
 
 vec3 getColor(vec2 ndc) {
@@ -489,7 +494,7 @@ vec3 getColor(vec2 ndc) {
     finalColor *= getTerrainColor(isect.pos, nor, isect.material);
 
     float lambda = exp(-0.0025 * isect.t);
-    finalColor = mix(fogColor, finalColor, lambda);
+    finalColor = mix(getSkyColor(cameraRay), finalColor, lambda);
 
     return finalColor;
   } else {
