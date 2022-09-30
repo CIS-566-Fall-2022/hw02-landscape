@@ -310,11 +310,21 @@ const float terrainAmplitude = 100.0;
 const float terrainMaxHeight = terrainOffset + terrainAmplitude;
 const float waterHeight = -48.0;
 
-float sceneSDF(vec3 pos) {
+struct Terrain {
+  float dist;
+  int material;
+};
+
+Terrain sceneSDF(vec3 pos) {
   float mountainsNoise = fbmRotate(pos.xz * 0.02);
   float mountainsSDF = planeSDF(pos, terrainOffset + mountainsNoise * terrainAmplitude);
   float waterSDF = planeSDF(pos, waterHeight);
-  return sdfUnion(mountainsSDF, waterSDF);
+
+  if (mountainsSDF < waterSDF) {
+    return Terrain(mountainsSDF, 1);
+  } else {
+    return Terrain(waterSDF, 2);
+  }
 }
 
 // =================================
@@ -334,6 +344,7 @@ vec3 getRay(vec2 ndc) {
 struct Intersection {
   vec3 pos;
   float t;
+  int material;
 };
 
 Intersection rayMarch(vec3 dir) {
@@ -342,12 +353,14 @@ Intersection rayMarch(vec3 dir) {
   vec3 currentPos = u_Eye;
   float t = 0.0;
   for (int i = 0; i < MAX_RAY_STEPS; ++i) {
-    float distToSurface = sceneSDF(currentPos);
+    Terrain terrain = sceneSDF(currentPos);
+    float distToSurface = terrain.dist;
 
     float epsilonMultiplier = 100.0 * (t / MAX_DISTANCE) + 1.0;
     if (distToSurface < EPSILON * epsilonMultiplier) {
       intersection.pos = currentPos;
       intersection.t = t;
+      intersection.material = terrain.material;
       return intersection;
     }
 
@@ -365,9 +378,9 @@ Intersection rayMarch(vec3 dir) {
 
 vec3 estimateNormal(vec3 p) {
     return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
-        sceneSDF(vec3(p.x, p.y, p.z + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
+        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)).dist - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)).dist,
+        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)).dist - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)).dist,
+        sceneSDF(vec3(p.x, p.y, p.z + EPSILON)).dist - sceneSDF(vec3(p.x, p.y, p.z - EPSILON)).dist
     ));
 }
 
@@ -395,7 +408,7 @@ float softShadow(vec3 p) {
   float result = 1.0;
   float prevH = 1e20;
   while (currentPos.y < terrainMaxHeight) {
-    float h = sceneSDF(currentPos);
+    float h = sceneSDF(currentPos).dist;
     if (h < EPSILON) {
       return 0.0;
     }
@@ -432,18 +445,21 @@ const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.55;
 const vec3 rockColor2 = vec3(89.0, 96.0, 97.0) / 255.0;
 const vec3 snowColor = vec3(219.0, 241.0, 253.0) / 255.0;
 
-vec3 getTerrainColor(vec3 pos, vec3 nor) {
-  float waterNoise = perlin(pos * 0.05);
-  vec3 waterColor = mix(waterColor1, waterColor2, waterNoise);
+vec3 getTerrainColor(vec3 pos, vec3 nor, int material) {
+  vec3 finalColor;
 
-  float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5);
-  rockNoise = smoothstep(0.3, 0.7, rockNoise);
-  vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
+  if (material == 1) {
+    float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5);
+    rockNoise = smoothstep(0.3, 0.7, rockNoise);
+    vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
 
-  float snowSlopeFactor = smoothstep(0.83, 0.75, dot(nor, vec3(0, 1, 0)));
+    float snowSlopeFactor = smoothstep(0.83, 0.75, dot(nor, vec3(0, 1, 0)));
 
-  vec3 finalColor = (pos.y > waterHeight + 0.3) ? rockColor : waterColor;
-  finalColor = mix(finalColor, snowColor, smoothstep(-38.0, -35.0, pos.y) * snowSlopeFactor);
+    finalColor = mix(rockColor, snowColor, smoothstep(-38.0, -35.0, pos.y) * snowSlopeFactor);
+  } else {
+    float waterNoise = perlin(pos * 0.05);
+    finalColor = mix(waterColor1, waterColor2, waterNoise);
+  }
 
   return finalColor;
 }
@@ -470,7 +486,7 @@ vec3 getColor(vec2 ndc) {
     for (int i = 1; i < 3; ++i) {
       finalColor += lights[i].color * max(0.0, dot(nor, lights[i].vecToLight));
     }
-    finalColor *= getTerrainColor(isect.pos, nor);
+    finalColor *= getTerrainColor(isect.pos, nor, isect.material);
 
     float lambda = exp(-0.0025 * isect.t);
     finalColor = mix(fogColor, finalColor, lambda);

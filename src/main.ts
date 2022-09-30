@@ -23,6 +23,8 @@ function loadScene() {
   // time = 0;
 }
 
+let shouldRender: boolean = true;
+
 function main() {
   window.addEventListener('keypress', function (e) {
     // console.log(e.key);
@@ -78,6 +80,10 @@ function main() {
 
   // This function will be called every frame
   function tick() {
+    if (!shouldRender) {
+      return;
+    }
+
     camera.update();
     // stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
@@ -99,6 +105,10 @@ function main() {
     camera.updateProjectionMatrix();
     sceneShader.setDimensions(window.innerWidth, window.innerHeight);
   }, false);
+
+  addEventListener('visibilitychange', (event) => {
+    shouldRender = (document.visibilityState === 'visible');
+  });
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.setAspectRatio(window.innerWidth / window.innerHeight);
