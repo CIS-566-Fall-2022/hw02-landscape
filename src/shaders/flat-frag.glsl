@@ -8,9 +8,9 @@ uniform float u_Time;
 in vec2 fs_Pos;
 out vec4 out_Col;
 
-const int MAX_RAY_STEPS = 128;
+const int MAX_RAY_STEPS = 300;
 const float FOV = 45.0;
-const float EPSILON = 0.001f;
+const float EPSILON = 0.0001f;
 const float EULER_NUMBER = 2.71828f;
 /* ---------------- Noise Functions ----------------*/
 
@@ -187,6 +187,18 @@ float planeSDF(vec3 queryPos, float height)
     return queryPos.y - height;
 }
 
+float cloudSDF(vec3 queryPos, float height)
+{   
+    vec3 boxPos = vec3(queryPos.x, queryPos.y, queryPos.z);
+    vec3 q = abs(boxPos) - height;
+    return (length(max(q, 0.0)) 
+      + min(max(q.x, max(q.y, q.z)), 0.0));
+}
+/* ---------------- SDF Helpers ----------------*/
+float opScale(vec3 p, float s)
+{
+    return cloudSDF(vec3(p.x, p.y/s, p.z), 30.0f) * s;
+}
 SDF sceneSDF(vec3 queryPos) 
 {
     // float mountainsNoise = fbm(queryPos.xyz * 1.5);
@@ -198,18 +210,20 @@ SDF sceneSDF(vec3 queryPos)
     float w = worley(0.01f*queryPos.xz) * 30.0f;
 
     float sphere = sphereSDF(queryPos, vec3(0.0f, 15.0f, -5.0f), sphereNoise + 1.0f);
-    float plane = planeSDF(queryPos, w + hiFreqDeform + lowFreqDeform - 10.0f);
-    // float plane = planeSDF(queryPos, w);
-
-    float water = planeSDF(queryPos, 1.0f);
+    float plane = planeSDF(queryPos, w + hiFreqDeform + lowFreqDeform - 50.0f);
+    float cloud = cloudSDF(queryPos, 30.0);
+    cloud = opScale(queryPos, 1.0f);
+    float water = planeSDF(queryPos, -30.0f);
     SDF resSDF;
     if (plane < water) {
-        float dist = smoothUnion(plane, sphere, 0.5);
+        float dist = smoothUnion(plane, sphere, 1.0);
+        dist = smoothUnion(dist, cloud, 1.0);
         resSDF.sdf = dist;
         resSDF.type = 1;
         return resSDF;
     } else {
-        float dist = smoothUnion(water, sphere, 0.5);
+        float dist = smoothUnion(water, sphere, 1.0);
+        dist = smoothUnion(dist, cloud, 1.0);
         resSDF.sdf = dist;
         resSDF.type = 2;
         return resSDF;
@@ -274,21 +288,22 @@ vec3 estimateNormal(vec3 p) {
 vec3 getSceneColor(vec2 uv)
 {
     Intersection intersection = getRaymarchedIntersection(uv);
-    
+    Ray ray = getRay(uv);
+
     DirectionalLight lights[3];
-    vec3 backgroundColor = vec3(0.);
-    lights[0] = DirectionalLight(normalize(vec3(15.0, 15.0, 10.0)),
-                                 normalize(vec3(1.0, 1.0, 1.0)));
-    lights[1] = DirectionalLight(vec3(0., 1., 0.),
-                                  normalize(vec3(1.0, 0.0, 0.0)));
+    vec3 backgroundColor = vec3(0.); // dir, color
+    lights[0] = DirectionalLight(normalize(vec3(0.0, 3.0, 10.0)),
+                                 normalize(vec3(1, 1, 1)));
+    lights[1] = DirectionalLight(normalize(vec3(0., 1., 0.)),
+                                  normalize(vec3(124, 104, 95)));
     lights[2] = DirectionalLight(normalize(-vec3(15.0, 0.0, 10.0)),
-                                  normalize(vec3(1.0, 0.0, 0.0)));
+                                  normalize(vec3(72, 53, 39)));
     
    
     backgroundColor =  normalize(vec3(1.0, 1.0, 0.0));
     
     // water or mountain
-    vec3 albedo = intersection.material_id == 1 ? vec3(1.0) : vec3(0.26f, 0.46f, 0.56f);
+    vec3 albedo = intersection.material_id == 1 ? normalize(vec3(191, 132, 100)) : vec3(0.26f, 0.46f, 0.56f);
     vec3 n = estimateNormal(intersection.position);
         
     vec3 color = albedo *
@@ -298,10 +313,7 @@ vec3 getSceneColor(vec2 uv)
 
 
     
-    // sun glare
-    // float sun = clamp( dot(kSunDir,rd), 0.0, 1.0 );
-    // col += 0.2*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
-    
+
 
     // there is intersection, otherwise it is -1
     if (intersection.distance > 0.0)
@@ -328,7 +340,7 @@ vec3 getSceneColor(vec2 uv)
 
 
         // clouds
-        Ray ray = getRay(uv);
+        // Ray ray = getRay(uv);
         vec3 ro = ray.origin;
         vec3 rd = ray.direction;
         float t = (2500.0-ro.y)/rd.y;
@@ -342,11 +354,14 @@ vec3 getSceneColor(vec2 uv)
         }
     }
 
+    // sun glare
+    float sun = clamp( dot(lights[0].dir, ray.direction), 0.0, 1.0 );
+    color += 0.4*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
+    // color = vec3(1.0);
 
-
-        // gamma correction
-        color = pow(color, vec3(1. / 2.2));
-        return color;
+    // gamma correction
+    color = pow(color, vec3(1. / 2.2));
+    return color;
 }
 
 /* ---------------- Main Function ----------------*/
