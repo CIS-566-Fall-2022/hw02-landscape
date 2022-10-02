@@ -50,98 +50,25 @@ mat3 rotateY3D(float angle)
                 sin(angle), 0, cos(angle));
 }
 
-// SDF for a sphere centered at objectPos
-float sphereSDF(vec3 rayPos, vec3 objectPos, float radius)
+mat3 identity()
 {
-    return length(rayPos - objectPos) - radius;
+    return mat3(1, 0, 0,
+                0, 1, 0, 
+                0, 0, 1);
 }
 
-float roundedBoxSDF(vec3 rayPos, vec3 objectPos, vec3 b, float r)
+float bias(float b, float t)
 {
-    vec3 q = abs(rayPos - objectPos) - b;
-    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
-}
-
-float planeSDF(vec3 rayPos, float h)
-{
-    return rayPos.y - h; 
-}
-
-float groundSDF(vec3 rayPos, out Material mat)
-{
-    float plane = planeSDF(rayPos, -2.0);
-    float cliff = roundedBoxSDF(rayPos, vec3(3.0, 0.2, 5.0), vec3(2.0, 0.05, 0.35), 0.1);
-    mat.color = vec3(0.4, 0.9, 0.6);
-    return plane;
-}
-
-float bridgeSDF(vec3 rayPos, out Material mat)
-{
-    // Add sine distortion to origin rayPos to make bridge curve up
-    vec3 p = rayPos;
-    p.y += sin(0.1f * rayPos.z - 1.5f) + 1.8f; 
-
-    // Ground planks
-    vec3 q = vec3(p.x, p.y, mod(p.z, 0.4));
-    float bridgeFloor = roundedBoxSDF(q, vec3(3.0, 0.0, 0.0), vec3(2.0, 0.05, 0.35), 0.1);
-    float dMin = bridgeFloor;
-
-    // Vertical planks
-    q = vec3(p.x, p.y, mod(p.z, 3.0));
-    float bridgeVert1 = roundedBoxSDF(q, vec3(1.1, 1.0, 0.0), vec3(0.1, 1.0, 0.2), 0.02);
-    dMin = min(dMin, bridgeVert1);
-
-    q = vec3(p.x, p.y, mod(p.z + 0.5, 3.0));
-    float bridgeVert2 = roundedBoxSDF(q, vec3(1.1, 0.5, 2.0), vec3(0.08, 0.5, 0.08), 0.02);
-    dMin = min(dMin, bridgeVert2);
-
-    // Horizontal planks
-    q = vec3(p.x, p.y, mod(p.z + 5.0, 3.5)) - vec3(0.0, -0.8, 0.0);
-    float lower = roundedBoxSDF(q, vec3(1.1, 1.0, 0.0), vec3(0.15, 0.09, 3.5), 0.02);
-    dMin = min(dMin, lower);
-
-    q = vec3(p.x, p.y, mod(p.z + 5.0, 3.5));
-    float lower2 = roundedBoxSDF(q, vec3(1.1, 1.1, 0.0), vec3(0.08, 0.1, 3.5), 0.02);
-    dMin = min(dMin, lower2);
-    
-    q = vec3(p.x, p.y, mod(p.z + 5.0, 3.5)) - vec3(0.0, 0.8, 0.0);
-    float lower3 = roundedBoxSDF(q, vec3(1.1, 1.2, 0.0), vec3(0.2, 0.05, 3.5), 0.02);
-    dMin = min(dMin, lower3);
-
-    // Assign color depending on part of bridge
-    if (dMin == bridgeFloor)
-    {
-        mat.color = vec3(0.5);
-    }
-    else {
-        mat.color = vec3(0.9, 0.1, 0.1);
-    }
-
-    return dMin;
-}
-
-float sceneSDF(vec3 rayPos, out Material mat)
-{
-    Material groundMat;
-    float ground = groundSDF(rayPos, groundMat);
-
-    Material bridgeMat;
-    float bridge = bridgeSDF(rayPos, bridgeMat);
-
-    // Assign color
-    float dMin = min(ground, bridge);
-    if (dMin == ground) {
-        mat.color = groundMat.color;
-    }
-    else {
-        mat.color = bridgeMat.color;
-    }
-    return min(ground, bridge);
+    return pow(t, log(b) / log(0.5f));
 }
 
 // Noise and interpolation functions based on CIS 560 and CIS 566 Slides - "Noise Functions"
 float noise2Df(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+vec2 noise2Dv( vec2 p ) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5,183.3)))) * 43758.5453);
 }
 
 float cosineInterpolate(float a, float b, float t)
@@ -187,6 +114,159 @@ float fbm2D(vec2 p)
     return total;
 }
 
+float worley2D(vec2 p) {
+    // Tile space
+    p *= 2.0;
+    vec2 pInt = floor(p);
+    vec2 pFract = fract(p);
+    float minDist = 1.0; // Minimum distance
+
+    // Iterate through neighboring cells to find closest point
+    for(int z = -1; z <= 1; ++z) {
+        for(int x = -1; x <= 1; ++x) {
+            vec2 neighbor = vec2(float(x), float(z)); 
+            vec2 point = noise2Dv(pInt + neighbor); // Random point in neighboring cell
+            
+            // Distance between fragment and neighbor point
+            vec2 diff = neighbor + point - pFract; 
+            float dist = length(diff); 
+            minDist = min(minDist, dist);
+        }
+    }
+    // Set pixel brightness to distance between pixel and closest point
+    return minDist;
+}
+
+// SDF for a sphere centered at objectPos
+float sphereSDF(vec3 rayPos, vec3 objectPos, float radius)
+{
+    return length(rayPos - objectPos) - radius;
+}
+
+float roundedBoxSDF(vec3 rayPos, vec3 objectPos, mat3 transform, vec3 b, float r)
+{
+    vec3 p = (rayPos - objectPos) * transform; //* rotateY3D(-0.528);
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
+}
+
+float planeSDF(vec3 rayPos, float h)
+{
+    return rayPos.y - h; 
+}
+
+float groundSDF(vec3 rayPos, out Material mat)
+{
+    float wOffset = 1.f - worley2D(0.1 * rayPos.xz);
+    //float wOffset = 0.0;
+    float water = planeSDF(rayPos - wOffset, -43.0);
+
+    float xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
+    float zOffset = cos(0.15 * rayPos.y - 1.0f);
+    float cliff = roundedBoxSDF(rayPos, vec3(-85.0 + xOffset, -25.0, -60.0 + zOffset), rotateY3D(-0.408), vec3(20.5, 15.5, 55.5), 5.5);
+    float dMin = min(water, cliff);
+
+    //float yOffset = 3.f * cos(0.05 * rayPos.x) * 2.f * sin(0.05 * rayPos.z) + (1.f - xOffset);
+    float mNoise = fbm2D(0.01 * rayPos.xz);
+    float yOffset = 200.f * mNoise;
+    float mountains = roundedBoxSDF(rayPos, vec3(-600.0, -253.0 + yOffset, -200.0 - yOffset), rotateY3D(-0.408), vec3(20.5, 0.5, 500.5), 120.5);
+
+    dMin = min(dMin, mountains);
+
+    if (dMin == water)
+    {
+        mat.color = mix(vec3(0.1, 0.4, 0.9), vec3(0.1, 0.2, 0.8), wOffset);
+    }
+    else if (dMin == cliff) {
+        mat.color = vec3(0.8, 0.7, 0.6);
+    }
+    else {
+        mat.color = mix(vec3(0.7, 0.3, 0.2), vec3(5.0, 5.0, 5.0), bias(mNoise, 0.03));
+    }
+    
+    return dMin;
+}
+
+float treeSDF(vec3 rayPos, out Material mat)
+{
+    float sphere = sphereSDF(rayPos, vec3(-85.0, -10.0, -60.0), 8.0);
+    mat.color = vec3(0.0, 1.0, 0.0);
+    return sphere;
+}
+
+float bridgeSDF(vec3 rayPos, out Material mat)
+{
+    // Add sine distortion to origin rayPos to make bridge curve up
+    vec3 p = rayPos;
+    p.y += sin(0.1f * rayPos.z - 1.5f) + 1.8f; 
+    mat3 id = identity();
+
+    // Ground planks
+    vec3 q = vec3(p.x, p.y, mod(p.z, 0.4));
+    float bridgeFloor = roundedBoxSDF(q, vec3(3.0, 0.0, 0.0), id, vec3(2.0, 0.05, 0.35), 0.1);
+    float dMin = bridgeFloor;
+
+    // Vertical planks
+    q = vec3(p.x, p.y, mod(p.z, 3.0));
+    float bridgeVert1 = roundedBoxSDF(q, vec3(1.1, 1.0, 0.0), id, vec3(0.1, 1.0, 0.2), 0.02);
+    dMin = min(dMin, bridgeVert1);
+
+    q = vec3(p.x, p.y, mod(p.z + 0.5, 3.0));
+    float bridgeVert2 = roundedBoxSDF(q, vec3(1.1, 0.5, 2.0), id, vec3(0.08, 0.5, 0.08), 0.02);
+    dMin = min(dMin, bridgeVert2);
+
+    // Horizontal planks
+    q = vec3(p.x, p.y, mod(p.z + 5.0, 3.5)) - vec3(0.0, -0.8, 0.0);
+    float lower = roundedBoxSDF(q, vec3(1.1, 1.0, 0.0), id, vec3(0.15, 0.09, 3.5), 0.02);
+    dMin = min(dMin, lower);
+
+    q = vec3(p.x, p.y, mod(p.z + 5.0, 3.5));
+    float lower2 = roundedBoxSDF(q, vec3(1.1, 1.1, 0.0), id, vec3(0.08, 0.1, 3.5), 0.02);
+    dMin = min(dMin, lower2);
+    
+    q = vec3(p.x, p.y, mod(p.z + 5.0, 3.5)) - vec3(0.0, 0.8, 0.0);
+    float lower3 = roundedBoxSDF(q, vec3(1.1, 1.2, 0.0), id, vec3(0.2, 0.05, 3.5), 0.02);
+    dMin = min(dMin, lower3);
+
+    // Assign color depending on part of bridge
+    if (dMin == bridgeFloor)
+    {
+        mat.color = vec3(0.5);
+    }
+    else {
+        mat.color = vec3(0.9, 0.1, 0.1);
+    }
+
+    return dMin;
+}
+
+float sceneSDF(vec3 rayPos, out Material mat)
+{
+    Material groundMat;
+    float ground = groundSDF(rayPos, groundMat);
+
+    Material bridgeMat;
+    float bridge = bridgeSDF(rayPos, bridgeMat);
+    float dMin = min(ground, bridge);
+
+    Material treeMat;
+    //float trees = treeSDF(rayPos, treeMat);
+    //dMin = min(dMin, trees);
+
+    // Assign color
+    //float dMin = min(ground, bridge);
+    if (dMin == ground) {
+        mat.color = groundMat.color;
+    }
+    else if (dMin == bridge) {
+        mat.color = bridgeMat.color;
+    }
+    else {
+        mat.color = treeMat.color;
+    }
+    return dMin;
+}
+
 float f(float x, float z)
 {
     return 3.f * fbm2D(0.5 * vec2(x, z));
@@ -204,6 +284,25 @@ vec3 getBackgroundColor(Ray ray)
         float noise = fbm2D(0.0001*p.xz);
         float lambda = smoothstep(0.4, 0.7, noise);
         color = mix(vec3(2.0), color, lambda);
+    }
+
+    // Sun
+    float sunSize = 5.0;
+    vec3 sunPosition = vec3(-1000.0, 73.0, 0.0);
+    vec3 sunDirection = normalize(sunPosition - ray.origin);
+    vec3 sunColor = vec3(1.0, 0.9, 0.3);
+    float angle = acos(dot(ray.direction, sunDirection)) * (360.0 / PI);
+
+    if (angle < sunSize) 
+    {
+        if (angle < 3.0)
+        {
+            color = sunColor;
+        }
+        else 
+        {
+            color = mix(sunColor, color, (angle - 3.0) / 2.0);
+        }
     }
 
     return color;
@@ -249,6 +348,10 @@ Intersection raymarch(vec2 uv, Ray ray, out Material mat)
             intersection.normal = estimateNormal(p);
             intersection.t = length(p - ray.origin);
             return intersection;
+        }
+        if (intersection.t > MAX_DEPTH)
+        {
+            break;
         }
         p = p + dist * ray.direction;
     }
