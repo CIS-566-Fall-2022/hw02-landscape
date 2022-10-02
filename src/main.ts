@@ -72,6 +72,11 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
   ]);
 
+  const march = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/passthrough-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/raymarch-frag.glsl')),
+  ]);
+
   function processKeyPresses() {
     // Use this if you wish
   }
@@ -83,9 +88,9 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
-    renderer.render(camera, flat, [
-      square,
-    ], time);
+     renderer.render(camera, march, [
+       square,
+     ], time, canvas.width, canvas.height);
     time++;
     // stats.end();
 
