@@ -18,18 +18,23 @@ const vec3 WORLD_RIGHT = vec3(-1.0, 0.0, 0.0);
 const vec3 WORLD_FORWARD = vec3(0.0, 0.0, 1.0);
 const vec3 LIGHT_DIR = vec3(0.6, 1.0, 0.4) * 1.5;
 
+
 // Want sunlight to be brighter than 100% to emulate
 // High Dynamic Range
-#define GRASS_COLOR vec3(0.0, 0.2, 0.5) * 1.5
-#define OCEAN_COLOR vec3(0.0, 0.329, 0.576) * 1.5
-#define ROCK_COLOR vec3(1.0, 0.3, 0.0) * 1.5
-#define LAVA_COLOR vec3(1.0, 0.1, 0.0) * 1.5
+#define ICE_COLOR vec3(0.8314, 0.9451, 0.9765) * 1.5
+#define WATER_COLOR vec3(0.0588, 0.3686, 0.6117) * 1.5
+#define LAVA_COLOR vec3(0.81, 0.19, 0.063) * 1.5
+#define FIRE_COLOR vec3(0.81, 0.188, 0.063) * 1.5
 
 // Fill light is sky color, fills in shadows to not be black
-#define SKY_FILL_LIGHT vec3(0.0, 0.0, 0.2) * 0.2
+#define SKY_FILL_LIGHT vec3(0.18, 0.266, 0.5098) * 0.2
 // Faking global illumination by having sunlight
 // bounce horizontally only, at a lower intensity
 #define SUN_AMBIENT_LIGHT vec3(0.9, 1.0, 0.9) * 0.2
+
+float map(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+}
 
 // TOOLBOX FUNCTIONS
 float noise_gen1_1(float x)
@@ -222,6 +227,7 @@ struct Intersection
     vec3 normal;
     float distance;
     int material_id;
+    float height;
 };
 
 struct DirectionalLight
@@ -277,6 +283,7 @@ struct Geo
 {
     int material_id;
     float dist;
+    float height;
 };
 
 Geo minSDF(Geo geo1, Geo geo2)
@@ -297,8 +304,10 @@ Geo sceneSDF(vec3 queryPos)
 {
     Geo plane;
     Geo sphere;
-    Geo sphere2;
     Geo capsule;
+        
+    Geo spherePlanet;
+
 
     Geo scene;
     
@@ -306,57 +315,42 @@ Geo sceneSDF(vec3 queryPos)
     
 
     plane.dist = planeSDF(queryPos, 1.0);
-    sphere.dist = sphereSDF(queryPos, vec3(0.0, -1.0, 5.0) +  fbm3D(queryPos + time, 0.5), 5.0);
-    sphere2.dist = sphereSDF(queryPos, vec3(0.0, -1.0, 0.0), 8.0);
+    sphere.dist = sphereSDF(queryPos, vec3(0.0, 0.0, 5.0) +  fbm3D(queryPos + time, 0.5), 5.0);
+    
+    spherePlanet.dist = sphereSDF(queryPos, vec3(-20.0, 20.0, 80.0) , 1.0);
+    
 
     float height = heightField(queryPos,fbm3D(queryPos, 1.f));
     scene.dist = height;
 
-    // float fbmNoise = fbm3D(queryPos, 0.4);
-    
-    //     scene.dist -= fbmNoise;
-
-    // if (fbmNoise < 0.4)
-    // {
-    //     scene.material_id = 2;
-    // }
-
-    // if (fbmNoise > 0.5)
-    // {
-    //     scene.material_id = 3;
-    // }
 
     float worley = worley3D(queryPos / 100.0 + fbm3D(queryPos + time, 1.0));
-
-    //scene.dist = plane.dist;
 
     if(worley > 0.5)
     {
         scene.material_id = 2;
     }
-    else if (worley < 0.2)
+    else if (worley < 0.4)
     {
-    scene.material_id = 3;
+        scene.material_id = 3;
     }
 
     if (sphere.dist < EPSILON * 100.0)
     {
         scene.material_id = 4;
     }
+    if (spherePlanet.dist < EPSILON * 100.0)
+    {
+        scene.material_id = 5;
+    }
     
     scene.dist = heightField(queryPos, 1.0 * worley);
     //Geo fbmTerrain;
     //fbmTerrain.dist  = planeSDF(1.0 * sinSmooth(fbm3D(queryPos, 1.f)) + queryPos, 0.0);
     scene.dist = smoothSubtraction(sphere.dist, scene.dist, 0.2);
-    
-    // for (int i=0; i<10; ++i)
-    // {
-    //     float x = worley3D(queryPos);
-    //     float z = fbm3D(queryPos, 1.0);
-    //     capsule.dist = capsuleSDF(queryPos, vec3(float(i) * x, 10.0 - 10.0 * (fract(u_Time / 100.0)), float(i) * z), vec3(float(i) *x, 0.1 + 10.0 - 10.0 * (fract(u_Time/ 100.0)), float(i) *z), 0.01);
-    //     scene.dist = smoothUnion(capsule.dist, scene.dist, 0.0);
-    // }
+    scene.dist = smoothUnion(spherePlanet.dist, scene.dist, 0.2);
 
+    scene.height = worley;
    return scene;
 }
 float softShadow(in vec3 ro, in vec3 rd, float mint, float maxt, float k)
@@ -409,6 +403,7 @@ Intersection getRaymarchedIntersection(vec2 uv)
             intersection.normal = vec3(0.0, 0.0, 1.0);
             intersection.distance = length(queryPoint - ray.origin);          
             intersection.material_id = sceneGeo.material_id;
+            intersection.height= sceneGeo.height;
             return intersection;
         }
         queryPoint = queryPoint + ray.direction * distanceToSurface;
@@ -426,38 +421,54 @@ vec3 estimateNormal(vec3 p  ) {
     ));
 }
 
+float getCloud(vec3 origin, vec3 dir) {
+  float t = (1000.0 - origin.y) / dir.y;
+  vec3 pos = origin + dir * t + vec3(0.0,0.0,u_Time);
+  float clouds = fbm3D(vec3(pos.xz * 0.001, u_Time / 100.0), 1.0);
+  return clouds;
+}
+
+
 vec3 getSceneColor(vec2 uv)
 {
     Intersection intersection = getRaymarchedIntersection(uv);
     
+    vec3 dirLight = vec3(15.0, 15.0, 10.0);
+    vec3 dirLight2 = vec3(0, 100.0, 5.0);
+
     DirectionalLight lights[3];
     vec3 backgroundColor = vec3(0.);
 
     if (intersection.material_id == 2)
-        lights[0] = DirectionalLight(normalize(vec3(15.0, 15.0, 10.0)),
-                                 OCEAN_COLOR);
+        lights[0] = DirectionalLight(normalize(dirLight),
+                                 mix(WATER_COLOR,ICE_COLOR, 2.0 * (intersection.height - 0.5)));
     else if (intersection.material_id == 3)
-        lights[0] = DirectionalLight(normalize(vec3(15.0, 15.0, 10.0)),
-                                 ROCK_COLOR);
+        lights[0] = DirectionalLight(normalize(dirLight),
+                                 mix(LAVA_COLOR, WATER_COLOR, intersection.height * 2.5));
     else if (intersection.material_id == 4)
-    {
-    // #define ROCK_COLOR vec3(1.0, 0.3, 0.0) * 1.5
-    // #define LAVA_COLOR vec3(1.0, 0.1, 0.0) * 1.5    
-        vec3 c1 = vec3(1.0, 0.3, 0.0);
-        vec3 c2 = vec3(1.0, 0.1, 0.0);
-        vec3 color = mix(c2, c1, intersection.position.y /2.5 + 1.0);
-        lights[0] = DirectionalLight(normalize(vec3(15.0, 15.0, 10.0)),
+    { 
+        vec3 color = mix(FIRE_COLOR, LAVA_COLOR, map(intersection.position.y, 0.0, 1.0, -20.0, 0.0));
+        lights[0] = DirectionalLight(normalize(dirLight2),
                                  color);
     }
+    else if(intersection.material_id == 5)
+    { 
+        lights[0] = DirectionalLight(normalize(dirLight),
+                                 mix(ICE_COLOR,WATER_COLOR, fbm2D(intersection.position.xz) ) );
+
+        return lights[0].color;
+    }
     else
-        lights[0] = DirectionalLight(normalize(vec3(15.0, 15.0, 10.0)),
-                                 GRASS_COLOR);
+    {
+        lights[0] = DirectionalLight(normalize(dirLight),
+                                 WATER_COLOR);
+    }
 
     lights[1] = DirectionalLight(vec3(0., 1., 0.),
                                  SKY_FILL_LIGHT);
     lights[2] = DirectionalLight(normalize(-vec3(15.0, 0.0, 10.0)),
                                  SUN_AMBIENT_LIGHT);
-    backgroundColor = GRASS_COLOR;
+    backgroundColor = WATER_COLOR;
     
     vec3 albedo = vec3(0.5);
     vec3 n = estimateNormal(intersection.position);
@@ -476,8 +487,12 @@ vec3 getSceneColor(vec2 uv)
     }
     else
     {
-        //color = vec3(0.5, 0.7, 0.9);
-        color = vec3(0.0, 0.0, 0.1);
+        vec3 color2 = vec3(0.5, 0.7, 0.9) * 0.1;
+        color = vec3(0.18, 0.266, 0.5098) * 0.1;
+
+        float clouds = getCloud(u_Eye, getRay(fs_Pos).direction);
+        color =  mix(color2, color, clouds);
+
     }
         color = pow(color, vec3(1. / 2.2));
         return color;
