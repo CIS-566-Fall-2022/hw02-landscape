@@ -1,6 +1,6 @@
 import {vec2, vec3} from 'gl-matrix';
-// import * as Stats from 'stats-js';
-// import * as DAT from 'dat-gui';
+import * as Stats from 'stats.js';
+import * as DAT from 'dat.gui';
 import Square from './geometry/Square';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
@@ -61,15 +61,15 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 0));
+  const camera = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 1));
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
 
   const flat = new ShaderProgram([
-    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
-    new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
+    new Shader(gl.VERTEX_SHADER, require('./shaders/custom-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/custom-frag.glsl')),
   ]);
 
   function processKeyPresses() {
@@ -83,9 +83,7 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
-    renderer.render(camera, flat, [
-      square,
-    ], time);
+    renderer.render(camera, flat, [square,], time);
     time++;
     // stats.end();
 
