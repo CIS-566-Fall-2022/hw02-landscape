@@ -6,7 +6,7 @@ uniform vec2 u_Dimensions;
 uniform float u_Time;
 uniform sampler2D u_Texture;
 
-in vec2 fs_Pos;
+in vec4 fs_Pos;
 out vec4 out_Col;
 
 #define RGB vec3
@@ -21,7 +21,7 @@ const vec3 _LightDir = vec3(-0.23047, 0.87328, -0.42927) ;
 const float _Brightness = 0.40000 ;
 const float _Contrast = 0.83000 ;
 const float _Saturation = 1.21000 ;
-const vec3 _SunStar = vec3(14.7, 1.47, 0.1) ;
+const vec3 _SunStar = vec3(7.7, 6.17, 0.1) ;
 const float _SunSize = 26.00000 ;
 const float _SunScale = 15.00000 ;
 const float _ExposureOffset = 11.10000 ;
@@ -102,7 +102,7 @@ const vec3 _TemplePosition = vec3(0.52, 2.35, 17.6) ;
 const vec3 _TempleScale = vec3(0.4, 0.53, 0.38) ;
 
 
-const vec3 _SunPosition = vec3(0.2, 56, -40.1) ;
+const vec3 _SunPosition = vec3(-30.3, 60, -40.1) ;
 const float _CharacterRotation = 0.17000 ;
 const vec3 _CharacterPosition = vec3(0.52, 2.35, 17.6) ;
 const vec3 _CharacterScale = vec3(0.4, 0.53, 0.38) ;
@@ -172,14 +172,14 @@ const mat4 _TombScarfMat = mat4( 0.9362437, 0, -0.3513514, 0,
 0, 1, 0, 0, 
 0.3513514, 0, 0.9362437, 0, 
 0, 0, 0, 1 ) ;
-const vec3 _PyramidPos = vec3(0, 10.9, -50) ;
+const vec3 _PyramidPos = vec3(-18.0, 10.9, -50) ;
 const vec3 _PyramidScale = vec3(41.1, 24.9, 18) ;
 const vec3 _PrismScale = vec3(1, 1.9, 1) ;
 const vec3 _PyramidNoisePrams = vec3(1.5, 1, 1) ;
 const vec3 _PrismEyeScale = vec3(0.7, 1.9, 51.5) ;
 const vec3 _PyramidEyeOffset = vec3(2.0, -4.9, 0) ;
 const float _PrismEyeWidth = 5.86000 ;
-const float _TerrainMaxDistance = 30.04000 ;
+const float _TerrainMaxDistance = 28.04000 ;
 const float _SmallDetailStrength = 0.00600 ;
 const vec3 _SmallWaveDetail = vec3(3.19, 16, 6.05) ;
 const vec2 _WindSpeed = vec2(2, 0.6) ;
@@ -188,7 +188,7 @@ const vec2 _MediumWaveDetail = vec2(2, 50) ;
 const vec3 _MediumWaveOffset = vec3(0.3, -2, 0.1) ;
 const vec2 _LargeWaveDetail = vec2(0.25, 0.73) ;
 const vec3 _LargeWavePowStre = vec3(0.6, 2.96, -2.08) ;
-const vec3 _LargeWaveOffset = vec3(-4.8, 4.41, -11.64) ;
+const vec3 _LargeWaveOffset = vec3(-3.9, 4.41, -11.64) ;
 const vec3 _FlyingHelperPos = vec3(2.15, 4.68, 14.4) ;
 const vec3 _FlyingHelperScale = vec3(0.25, 0.001, 0.3) ;
 const vec3 _FlyingHelperMovement = vec3(0.44, 1.44, -2.98) ;
@@ -254,11 +254,33 @@ float sdCylinder(vec3 p, vec2 h)
 	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
 }
 
+float sdCone( in vec3 p, in vec2 c, float h )
+{
+  // c is the sin/cos of the angle, h is height
+  // Alternatively pass q instead of (c,h),
+  // which is the point at the base in 2D
+  vec2 q = h*vec2(c.x/c.y,-1.0);
+    
+  vec2 w = vec2( length(p.xz), p.y );
+  vec2 a = w - q*clamp( dot(w,q)/dot(q,q), 0.0, 1.0 );
+  vec2 b = w - q*vec2( clamp( w.x/q.x, 0.0, 1.0 ), 1.0 );
+  float k = sign( q.y );
+  float d = min(dot( a, a ),dot(b, b));
+  float s = max( k*(w.x*q.y-w.y*q.x),k*(w.y-q.y)  );
+  return sqrt(d)*sign(s);
+}
+
 float sdCapsule( vec3 pos, vec3 a, vec3 b, float r )
 {
   vec3 pa = pos - a, ba = b - a;
   float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
   return length( pa - ba*h ) - r;
+}
+
+float sdVerticalCapsule( vec3 p, float h, float r )
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
 }
 
 float sdPlane(vec3 p, vec4 n)
@@ -533,206 +555,37 @@ vec2 sdDesert( in vec3 pos, in float terrain )
 }
 
 //==========================================================================================
-// Modified cone versions for scarf and main cloak
-//==========================================================================================
-float sdScarfCone( in vec3 p, in float h, in float r1, in float r2 )
-{
-    float d1 = -p.y - h;
-    float q = (p.y - h);
-    float si = 0.5*(r1-r2)/h;
-    p.z = mix(p.z, p.z * 0.2, q);
-    float d2 = max( sqrt( dot(p.xz,p.xz)*(1.0-si*si)) + q*si - r2, q );
-    return length(max(vec2(d1,d2),0.0)) + min(max(d1,d2), 0.);
-}
-
-vec2 sdCloakCone( in vec3 p, in float h, in float r1, in float r2 )
-{
-    float d1 = -p.y - h;
-    float q = (p.y - h);
-    r2 = (q * r2) + 0.08;
-    float si = 0.5*(r1-r2)/h;
-    float d2 = max( sqrt( dot(p.xz,p.xz)*(1.0-si*si)) + q*si - r2, q );
-    return vec2(length(max(vec2(d1,d2),0.0)) + min(max(d1,d2), 0.), q);
-}
-
-//==========================================================================================
 // Character
 //==========================================================================================
-vec3 headScarfMatUVW;
-float sdHeadScarf(vec3 pos)
+float sdCharacter(vec3 pos)
 {
+    pos -= vec3(-0.1, -0.4, -0.5);
+    float res = 10000000.0;
+	float head = sdSphere(pos + vec3(0.0, -0.05, 0.0), 0.1);
+	res = min(res, head);
+	float hairL = sdSphere(pos + vec3(-0.11, -0.1, -0.05), 0.06);
+	res = min(res, hairL);
+	float hairR = sdSphere(pos + vec3(0.11, -0.1, -0.05), 0.06);
+    res = min(res, hairR);
+
+	float cloak = sdCone(pos, vec2(0.9, 0.5), 0.2);
 	
-    vec3 headScarfPos = pos - _HeadScarfPosition;
-    rX( headScarfPos, _HeadScarfRotation );
+	res = smoothUnion(res, cloak, 0.01);
 
-    float distanceToTop =  min(0.0,(pos.y + 0.01));
+	float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.15, 0.1));
+	res = min(res, body);
 
-    // Put a slight twist in the middle. Gives the feel that the head scarf
-    // is sitting on shoulders. Very subtle, but I can see it :D
-    float midBend = abs( fract( distanceToTop + 0.5 ) * 2.0 - 1.0 );
-    headScarfPos.x += (cos( 2.0 + headScarfPos.y * 50.0 ) * 0.05 * midBend);
-    headScarfPos.z += (sin( 2.0 + headScarfPos.y * 50.0 ) * 0.03 * midBend);
+	float leftLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.0), 0.1, 0.03);
+    float rightLeg = sdVerticalCapsule(pos + vec3(0.08, 0.4, 0.0), 0.1, 0.03);
+	float dt2 = min(leftLeg, rightLeg);
 
-    // Apply wind to head Scarf    
-    headScarfPos += SmoothTriangleWave(vec4(pos.xyz * 5.0+ u_Time,1.0) ).xyz * 0.05 * distanceToTop;
-
-    // Scarf shape    
-    float headScarf = sdScarfCone(headScarfPos, _HeadScarfScale.x, _HeadScarfScale.y, _HeadScarfScale.z );
-    headScarf = max(headScarf, -sdScarfCone(headScarfPos, _HeadScarfScale.x, _HeadScarfScale.y, _HeadScarfScale.z - 0.011));
-    
-    // Cut out the bottom of the head scarf. I have no idea what I was thinking, when I wrote this
-    vec3 cutOutPos = headScarfPos - vec3( 0.0, 0.08, 0.0);
-    vec3 r = vec3(0.12, 0.8, 0.2);
-    float smallestSize = min(min(r.x,r.y),r.z);
-	  vec3 dp = cutOutPos/r;
-    float h = min(1.0, abs(1.0 - abs(dp.y)) );
-
-    // Apply some crazy power until it looks like a scarf sitting on shoulders
-    h =  pow(h, 5.5);
-    
-    float rad = h ;
-    float d = length( cutOutPos/r );
-    
-    float cutOut = (d - rad) * smallestSize;
-    headScarf	= max(headScarf, cutOut);
-
-    // material information
-    float materialVal = 1.0 - pow(d - rad, 0.02);
-	  headScarfMatUVW = smoothstep( -1.0, 1.0, materialVal / _HeadScarfScale);
-
-	// Chop the top off, to make room for head
-    vec3 headPos = pos - vec3(0.0, -0.7, 0.0);
-    float head   = sdBox(headPos, vec3(0.2, 0.5, 0.2)); 
-
-    headPos -= vec3(0.75, 0.0, 0.0);
-    float head1   = sdBox(headPos - vec3(0, 0.5, 0.0), vec3(1.2, 0.1, 0.2)); 
-    headScarf = min(head, head1);
-
-    headPos -= vec3(0.75, 0.0, 0.0);
-    float head2   = sdBox(headPos, vec3(0.2, 0.5, 0.2)); 
-    headScarf = min(headScarf, head2);
-    
-    return headScarf;
+	res = min(res,dt2);
+    return res;
 }
-// vec3 mainCloakMatUVW;
-// float sdMainCloak(vec3 pos)
-// {
-//     vec3 cloakPos = pos - _MainClothPosition;
-//     float q =  min(0.0,(cloakPos.y + 0.05));
-//     rX( cloakPos, _MainClothRotation );
-    
-//     // Apply detailing
-//     cloakPos += SmoothTriangleWave(vec4(pos.xyz * _MainClothDetail.x + u_Time,1.0) ).xyz * _MainClothDetail.y * q;
-    
-//     // Add main Wind direction
-//     Bend(cloakPos, _WindDirection.xy, _MainClothDetail.z);
-    
-//     vec2 cloak = sdCloakCone( cloakPos, _MainClothScale.y, _MainClothScale.x, _MainClothScale.z);
-//     // Cut out the internals of the cloak
-//     cloak.x = max( cloak.x, - sdCloakCone( cloakPos, _MainClothScale.y * 1.05, _MainClothScale.x * 0.95, _MainClothScale.z * 1.01).x);
 
-//     // UV Information
-//     mainCloakMatUVW = smoothstep( -1.0, 1.0, cloakPos / _MainClothScale);
-
-//     // Cut out the top section
-//     vec3 headPos = cloakPos - vec3(0.0, 0.69, 0.0);
-//     float head   = sdBox(headPos, vec3(0.2, 0.67, 0.2)); 
-// 	cloak.x = max(cloak.x, -head);
-    
-//     // Cut the bottom
-//     float bottomCut   = sdPlane(cloakPos - _MainClothBotCutPos); 
-//     cloak.x = max(cloak.x, -bottomCut);
-    
-//     return cloak.x;
-// }
-
-// float earWigs(in vec3 pos) 
-// {   
-// 	// Symmetrical ear wigs. Is that even a word... Ear Wigs!
-//     pos.x = abs(pos.x);
-
-//     vec2  earWig = sdSegment( pos, vec3(0.02, 0.11, 0.0), vec3(0.07, 0.16, 0.05));
-//     float ear  = earWig.x - 0.026  + (earWig.y * 0.03);
-//     return ear;
-// }
-
-
-// float sdHead( vec3 pos )
-// {
-//     vec3 headPos = pos - _HeadPos;
-
-//     // Slight tilt
-//     rY(headPos, _HeadRotationY ); // 1.2
-//     rX(headPos, _HeadRotationX );
-
-//     float head = sdCylinder( headPos, vec2(0.05, 0.13) );
-//     head = smin(earWigs(headPos), head, 0.04 );
-//     return head;
-// }
-
-// vec3 longScarfMatUVW;
-// float sdScarf(vec3 pos) 
-// {
-//     vec3 scarfPos = pos - _LongScarfPos;
-//     vec3 scale 	= _LongScarfScale;
-
-
-//     float distanceToPoint = max(0.0,length(scarfPos) - 0.04);
-//     scarfPos.x += (sin( scarfPos.z * _LongScarfWindStrength.x + u_Time ) * 0.1 * distanceToPoint);
-//     scarfPos.y += (sin( scarfPos.z * _LongScarfWindStrength.y + u_Time ) * 0.1 * distanceToPoint);
-
-//     // Apply detailing
-//     scarfPos += SmoothTriangleWave(vec4(pos.xyz * _LongScarfWindStrength.z + u_Time,1.0) ).xyz * _LongScarfWindStrength.w * distanceToPoint;
-
-//     // Essentially a box pivoted at a specific point
-//     vec3 scarfOffset = vec3(0.0, 0.0, -scale.y);
-
-//     rX(scarfPos, _LongScarfRotX) ;
-//     float scarf = sdBox(scarfPos - scarfOffset.xzy , scale);
-
-//     longScarfMatUVW = smoothstep(-1.0, 1.0, ( scarfPos - scarfOffset.xzy ) / scale);
-
-//     return max(scarf, sdSphere( scarfPos, _LongScarfMaxRad ));
-// }
-
-// float sdLegs( in vec3 pos  )
-// {
-//     vec2  upperLeftLeg = sdSegment( pos, _UpperLeftLegA, _UpperLeftLegB );
-//     float leftLeg  = upperLeftLeg.x - _UpperLeftLegParams.x;
-//     vec2 lowerLeftLeg = sdSegment( pos, _LowerLeftLegA, _LowerLeftLegB );
-//     leftLeg  = smin( leftLeg, lowerLeftLeg.x - _LowerLeftLegParams.x + (lowerLeftLeg.y * _LowerLeftLegParams.y), _LowerLeftLegParams.z);
-
-//     // cut bottom of left leg otherwise looks nasty with harsh tip
-//     leftLeg = max( leftLeg, -(length( pos - _LowerLeftLegB) - 0.06 ) );
-
-//     vec2  upperRightLeg = sdSegment( pos, _UpperRightLegA, _UpperRightLegB );
-//     float rightLeg  = upperRightLeg.x - _UpperRightLegParams.x;
-//     vec2 lowerRightLeg = sdSegment( pos, _LowerRightLegA, _LowerRightLegB );
-//     rightLeg  = smin( rightLeg, lowerRightLeg.x - _LowerRightLegParams.x + (lowerRightLeg.y * _LowerRightLegParams.y), _LowerRightLegParams.z);
-
-//     return min( leftLeg, rightLeg );
-// }
-
-// vec2 sdFace( vec3 pos, vec2 currentDistance )
-// {
-//     vec3 headPos = pos - vec3(0.0, -0.05, 0.0);
-//     rX( headPos, _HeadRotationX );
-//     rY(headPos, _HeadRotationY );
-
-//     // head hole - Fire in the hole!    
-//     // OK this does not look right. Actually looks like there was "fire in the hole" for 
-//     // the poor travellers face. Need to come back to it one day and finish it. Maybe!
-//     vec3 headHole = headPos - vec3(0.0, 0.1, -0.07);
-//     float hole = sdEllipsoid( headHole,vec3(0.05, 0.03, 0.04) );
-//     hole  = smin ( hole, sdEllipsoid( headHole - vec3(0.0, -0.03, 0.0), vec3(0.03,0.03, 0.04)), 0.05 );
-
-//     // Cut it OUT!
-//     float character =  smax( currentDistance.x, -hole, 0.001);
-
-//     // face. Meh just an ellipsoid. Need to add eyes and bandana
-//     float face = sdEllipsoid( headHole - _FacePosition.xyz, _FaceSize );
-//     return smin_mat( vec2(face, MAT_CHARACTER_FACE), vec2(character,currentDistance.y), 0.01, 0.2 );
-// }
+//==========================================================================================
+// Building
+//==========================================================================================
 
 float sdFrontTemple(vec3 pos)
 {
@@ -760,6 +613,26 @@ float sdFrontTemple(vec3 pos)
     }
     return res;
 }
+
+float sdMidTemple(vec3 pos, float neckLens)
+{
+    vec3 basePos = pos - vec3(-4.0, -0.8, -2.0);
+    float res = 10000000.0;
+    const int TEMPLE_NUM = 1;
+    vec3 scale = _TempleScale;
+
+    float bottom1   = sdBox(basePos, vec3(0.4, 2.0, 0.4)); 
+    res = min(res, bottom1);
+    float neck   = sdCylinder(basePos - vec3(0.0, 2.0, 0.0), vec2(0.4, neckLens)); 
+    res = min(res, neck);
+    float bottom2   = sdBox(basePos - vec3(0.0, 2.0 + neckLens + 0.05, 0.0), vec3(0.4, 0.3, 0.4)); 
+    res = min(res, bottom2);
+	float bottom3   = sdCylinder(basePos - vec3(0.0, 2.0 + neckLens + 0.15, 0.0), vec2(0.6, 0.1));
+    res = smoothUnion(res, bottom3, 0.1);
+
+    return res;
+}
+
 
 float sdMushroom(vec3 pos) 
 {
@@ -847,11 +720,21 @@ vec2 sdTemples (vec3 pos) {
   float scaleMul = min(scale.x, min(scale.y, scale.z));
   
   float res = 10000000.0;
+  
+  float midTemple1 = sdMidTemple(pos, 0.8);
+  res = min(res, midTemple1);
+  float midTemple2 = sdMidTemple(pos - vec3(2.5, -1.0, 0.0), 0.4);
+  res = min(res, midTemple2);
 
   rY(pos, _TempleRotation);
   pos /= scale;
 
-  float temple1 = sdFrontTemple(pos);
+
+  float frontTemple = sdFrontTemple(pos);
+  float character = sdCharacter(pos);
+
+  res = min(res, frontTemple);
+  res = min(res, character);
 
   pos *= scale;
   rY(pos, -_TempleRotation * 3.0);
@@ -859,11 +742,9 @@ vec2 sdTemples (vec3 pos) {
 
   float temple2 = sdBackRightTemple(pos - vec3(7.4, 0.0, 0.0));
 
-  res = min(temple1, temple2);
+  res = min(res, temple2);
 
   vec2  templeMat = vec2(res, 11 );
-
-  
 
   vec2  templesMat = templeMat; 
 
@@ -873,60 +754,11 @@ vec2 sdTemples (vec3 pos) {
   return templesMat;
 }
 
-
-vec2 sdCharacter( vec3 pos )
-{
-    // // Now we are in character space - Booo YA! - I never ever say Boooo YA!. Peter Pimley 
-    // // says that. Peter: have you been putting comments in my code?
-    pos -= _CharacterPosition;
-    vec3 scale = _CharacterScale;
-    float scaleMul = min(scale.x, min(scale.y, scale.z));
-    
-    rY(pos, _CharacterRotation);
-
-    pos /= scale;
-
-    // float mainCloak = sdMainCloak( pos );
-    // vec2  mainCloakMat = vec2(mainCloak, MAT_CHARACTER_MAIN_CLOAK );
-
-    float headScarf = sdHeadScarf(pos);
-    vec2  headScarfMat = vec2(headScarf, 11 );
-
-    // float longScarf = sdScarf(pos);
-    // vec2  longScarfMat = vec2( longScarf, MAT_CHARACTER_LONG_SCARF );
-    // headScarfMat = smin_mat( headScarfMat, longScarfMat, 0.02, 0.1 );
-
-    // float head      = sdHead( pos );
-    // vec2  headMat	= vec2( head, MAT_CHARACTER_BASE );
-    // headScarfMat    = smin_mat(headScarfMat, headMat, 0.05, 0.75);
-
-    vec2  characterMat = headScarfMat; 
-    // characterMat = sdFace( pos, characterMat );
-
-    // vec2 legsMat = vec2( sdLegs(pos), MAT_CHARACTER_BASE );
-    // characterMat = min_mat( characterMat, legsMat );
-
-    // // chope the bottom. This is to chop the bottom of right leg. Though
-    // // I have positioned the character so that the right leg is hidden by terrain. 
-    // // Commenting it out for now
-    // //    characterMat.x = max( characterMat.x, -sdPlane( pos - vec3(0.0, -0.85, 0.0) ) );
-    characterMat.x *= scaleMul;
-
-
-    return characterMat;
-}
-
 //==========================================================================================
 // Clouds
 //==========================================================================================
 float sdCloud( in vec3 pos, vec3 cloudPos, float rad, float spread, float phaseOffset, vec3 globalParams)
 { 
-	// Clouds are simple. A bunch of spheres with varying phase offset, size and 
-	// frequency values. They are also scaled along the z-Axis so more like circles
-	// than spheres. With additional noise to make them look fluffy. 
-	// While rendering them we "perturb" #SpellCheck the normals to get strong specular
-	// highlights
-
 	// Add noise to the clouds
 	pos += pn( pos ) * _CloudNoiseStrength;
 	pos = pos - cloudPos;
@@ -1008,7 +840,6 @@ vec2 mapSimple( in vec3 pos )
 {
 	return map( pos );
 }
-
 
 //==========================================================================================
 // Raycasting: https://www.shadertoy.com/view/Xds3zN
@@ -1228,173 +1059,6 @@ vec3 render( in vec3 ro, in vec3 rd )
 		vec3 col	= mix( _TombMainColor, _TombScarfColor * 2.0, m - MAT_TOMB );
 		return mix( diff * col, skyCol, skyFog);
 	}
-
-	// // Flying Helpers
-	// if( TEST_MAT_LESS(m, MAT_FLYING_HELPER_SCARF ) )
-	// {
-	// 	float fres	= pow( clamp(1.0+dot(nor,rd) + 0.75,0.0,1.0), _FlyingHelperFrePower ) * _FlyingHelperFreScale;
-	// 	float diff	= clamp(dot(nor,_LightDir) + 1.5,0.0,1.0);
-	// 	vec3 col = _FlyingHelperYellowColor;
-
-	// 	// The main head
-	// 	if ( TEST_MAT_LESS( m, MAT_FLYING_HELPERS ) )
-	// 	{
-	// 		col = _FlyingHelperMainColor;
-
-	// 		// Yellow borders
-	// 		float outerBorder = step( 0.95, abs(helperScarfMatUVW.x * 2.0 - 1.0) );
-	// 		col  = mix( col * diff, _FlyingHelperYellowColor,  outerBorder );
-
-	// 		// cubes in middle
-	// 		float rectsY = abs(helperScarfMatUVW.z * 2.0 - 1.0);
-	// 		float rectsX = abs(helperScarfMatUVW.x * 2.0 - 1.0);
-
-	// 		float circles = 1.0 - (length( vec2(rectsY, rectsX) ) - 0.1);
-	// 		circles = step( 0.5, circles );
-
-	// 		// Ideally want to do a separate bass for bloom. maybe one day
-	// 		float bloomCircle = 1.0 - (length( vec2(rectsY, rectsX) ) - 0.1); 
-	// 		float bloom  = max( bloomCircle - 0.5, 0.0);
-
-	// 		rectsY = step( 0.5, abs(rectsY * 2.0 - 1.0) );
-	// 		rectsX = 1.0 - step( 0.5, abs(helperScarfMatUVW.x * 2.0 - 1.0) );
-
-	// 		float rects = min(rectsX, rectsY);
-
-	// 		float symbolsX = fract(rects/(helperScarfMatUVW.z * 20.0) * 20.0);
-	// 		float symbolsY = fract(rects/(helperScarfMatUVW.x * 2.0) * 2.0);
-	// 		float symbolsZ = fract(rects/((helperScarfMatUVW.z + 0.1) * 16.0) * 16.0);
-	// 		float symbolsW = fract(rects/((helperScarfMatUVW.x + 0.1) * 3.0) * 3.0);
-
-	// 		float symbols = symbolsY;
-	// 		symbols = max( symbols, symbolsZ );
-	// 		symbols = min(symbols , max(symbolsX, symbolsW));
-	// 		symbols = step( 0.5, symbols ); 
-
-	// 		symbols = min( symbols, circles );
-
-	// 		//  float rects = min(rectsX, max(circles,rectsY));
-
-	// 		col = mix( col, _FlyingHelperYellowColor, circles);
-	// 		col = mix( col, _FlyingHelperWhiteColor * 2.0, symbols)  + bloom  * _FlyingHelperBloomScale;
-	// 	}
-	// 	else
-	// 	{
-	// 		// The scarfs, just have a yellow border
-	// 		float outerBorder = step( 0.9, abs(helperScarfMatUVW.x * 2.0 - 1.0) );
-	// 		col 	= mix( _FlyingHelperMainColor * diff, _FlyingHelperYellowColor,  outerBorder );
-	// 	}
-	// 	return mix( fres * col, skyCol, skyFog * _FlyingHelperFogScale );
-	// }
-
-	// // Character
-	// if( TEST_MAT_GREATER (m, MAT_CHARACTER_BASE ) )
-	// {
-	// 	float diff = _CharacterDiffScale * clamp( dot( nor, _LightDir ), 0.0, 1.0 );
-
-	// 	// Why did I fudge these normals, I can't remember. It does look good though, so keep it :)
-	// 	nor		= normalize( nor + vec3(0.3,-0.1,1.0));
-	// 	nor.y	*= 0.3;
-
-	// 	float fres	= pow( clamp( 1.0 + dot(nor,rd) + 0.75, 0.0, 1.0), _CharacterFrePower ) * _CharacterFreScale;
-	// 	vec3 col	= _CharacterMainColor;
-
-	// 	// Just base color
-	// 	if( TEST_MAT_LESS( m, MAT_CHARACTER_BASE) )
-	// 	{
-	// 		// Add sand fade to legs. Mixing terrain color at bottom of legs
-	// 		float heightTerrainMix	= pow((pos.y / _CharacterHeightTerrainMix.x), _CharacterHeightTerrainMix.y);
-	// 		heightTerrainMix		= clamp( heightTerrainMix, 0.0, 1.0 );
-	// 		col	= mix( _CharacterMainColor, _CharacterTerrainCol, heightTerrainMix );
-	// 	}
-	// 	// Main Cloak
-	// 	else if( TEST_MAT_LESS( m,MAT_CHARACTER_MAIN_CLOAK) )
-	// 	{
-	// 		// Cone kind of shapes
-	// 		float rectsX	= fract(atan(mainCloakMatUVW.x/ mainCloakMatUVW.z) * 7.0) ;
-	// 		rectsX			= abs(rectsX * 2.0 - 1.0);
-	// 		float rects		= rectsX;
-	// 		rects			= step( 0.5, rects * (1.0 - mainCloakMatUVW.y*3.5) );
-	// 		col = mix( col, _CharacterCloakDarkColor, rects );
-
-	// 		// Yellow borders, two lines
-	// 		float outerBorder		= step( 0.915, abs(mainCloakMatUVW.y * 2.0 - 1.0) );
-	// 		float betweenBorders	= step( 0.88, abs(mainCloakMatUVW.y * 2.0 - 1.0) );
-	// 		float innerBorder		= step( 0.87, abs(mainCloakMatUVW.y * 2.0 - 1.0) );
-
-	// 		innerBorder = min( innerBorder, 1.0 - betweenBorders );
-
-	// 		col  = mix( col, _CharacterCloakDarkColor,  betweenBorders );
-	// 		col  = mix( col, _CharacterYellowColor,  outerBorder );
-	// 		col  = mix( col, _CharacterYellowColor,  innerBorder);
-
-	// 		// The verticle cubes/lines running across the bottom of cloak
-	// 		float cubes = abs(fract(atan(mainCloakMatUVW.x/ mainCloakMatUVW.z) * 10.0)  * 2.0 - 1.0);
-	// 		cubes		= min(betweenBorders, step( 0.9, cubes) );
-	// 		col			= mix( col, _CharacterYellowColor,  cubes);
-	// 	}
-	// 	// headscarf
-	// 	else if( TEST_MAT_LESS( m, MAT_CHARACTER_NECK_SCARF) )
-	// 	{
-	// 		col = mix( col, _CharacterYellowColor, step( 0.7, headScarfMatUVW.y) );
-	// 	}
-	// 	// Long Scarf
-	// 	else if( TEST_MAT_LESS( m, MAT_CHARACTER_LONG_SCARF) )
-	// 	{
-	// 		col = _CharacterYellowColor;
-
-	// 		// Yellow borders, two lines
-	// 		float outerBorder = step( 0.9, abs(longScarfMatUVW.x * 2.0 - 1.0) );
-	// 		float innerBorder = step( 0.7, abs(longScarfMatUVW.x * 2.0 - 1.0) );
-
-	// 		innerBorder = min( innerBorder, 1.0 - step( 0.8, abs(longScarfMatUVW.x * 2.0 - 1.0) ) );
-
-	// 		// Mix borders
-	// 		col  = mix( col, _CharacterMainColor,  outerBorder );
-	// 		col  = mix( col, _CharacterMainColor,  innerBorder);
-
-	// 		// cubes in middle
-	// 		float rectsY = abs(fract( longScarfMatUVW.y/ 0.10 ) * 2.0 - 1.0);// - 0.5 * 0.10;
-	// 		float rectsX = abs(longScarfMatUVW.x * 2.0 - 1.0);
-
-	// 		float circles = 1.0 - (length( vec2(rectsY, rectsX) ) - 0.1);
-	// 		circles = step( 0.5, circles );
-
-	// 		float bloomCircle	= 1.0 - (length( vec2(rectsY, rectsX * 0.7) ) - 0.1); 
-	// 		float bloom 		= max( bloomCircle - 0.45, 0.0);
-
-	// 		rectsY = step( 0.5, abs(rectsY * 2.0 - 1.0) );
-	// 		rectsX = 1.0 - step( 0.5, abs(longScarfMatUVW.x * 2.0 - 1.0) );
-
-	// 		float rects = min(rectsX, rectsY);
-
-	// 		// There are better ways of doing symbols. Spend some time on it, buddy!
-	// 		float symbolsX = fract(rects/(longScarfMatUVW.y * 0.17) * 10.0);
-	// 		float symbolsY = fract(rects/(longScarfMatUVW.x * 18.5) * 10.0);
-
-	// 		float symbols	= symbolsX;
-	// 		symbols			= max( symbols, symbolsY );
-	// 		symbols			= step( 0.5, symbols ); 
-
-	// 		symbols = min( symbols, circles );
-
-	// 		//        float rects = min(rectsX, max(circles,rectsY));
-	// 		col = mix( col, _CharacterMainColor, circles);
-	// 		col = mix( col, _CharacterWhiteColor * 2.0, symbols)  + bloom * _CharacterBloomScale;
-
-	// 		// White glow and disintegrating the scarf, showing depleting scarf energy. Needs bloom effect :(
-	// 		col = mix( col, _CharacterMainColor, 1.0 - smoothstep(0.4, 0.6, longScarfMatUVW.y));
-	// 		vec3 whiteMiddle = mix( col, _CharacterWhiteColor + bloom * _CharacterBloomScale, step(0.48, longScarfMatUVW.y));
-	// 		col = mix( whiteMiddle, col, step(0.5, longScarfMatUVW.y));
-	// 	}
-	// 	// Face
-	// 	else if( TEST_MAT_LESS( m, MAT_CHARACTER_FACE)  )
-	// 	{
-	// 		col = vec3(0,0,0);
-	// 	}
-	// 	float ao = AmbientOcclusion(pos - (rd * 0.01), nor, _CharacterAOParams.x, _CharacterAOParams.y); 
-	// 	return ao * mix( (fres + diff) * col, skyCol, skyFog * _CharacterFogScale );
-	// }
 	return vec3( clamp(col * 0.0,0.0,1.0) );
 }
 
@@ -1412,6 +1076,22 @@ float noise(float p)
     return mix(rand(fl), rand(fl + 1.0), fc);
 }
 
+float distanceFog(float d) {
+    float fog_maxdist = 50.f;
+    float fog_mindist = 18.f;
+    if (d > fog_maxdist) {
+        return 1.f;
+    }
+    else if (d < fog_mindist) {
+        return 0.f;
+    }
+    else {
+        float fog_factor = 1.0 - (fog_maxdist - d) / (fog_maxdist - fog_mindist);
+        return fog_factor;
+    }
+    return 0.f;
+}
+
 void main() {
   // Move camera using noise. This is probably quite expensive way of doing it :(
 	float unitNoiseX = (noise(u_Time * 0.01 * _CameraMovement.w ) * 2.0)  - 1.0;
@@ -1425,7 +1105,7 @@ void main() {
 
 	// Screen ray frustum aligned
 	screenRay.xy = screenCoord * _CameraFOV.xy;
-  screenRay.x			*= 1.35;
+    screenRay.x			*= 1.35;
 	screenRay.z  = -_CameraFOV.z;
 	screenRay /= abs( _CameraFOV.z); 
 
@@ -1435,6 +1115,9 @@ void main() {
 	// Do the render
 	vec4 col = vec4(render(ro, rd), 0.0);
 
+	vec3 res = castRay(ro,rd);
+	float t = res[0];
+	vec3 isect = ro + t * rd;
 	// No it does not need gamma correct or tone mapping or any other effect that you heard about
 	// and thought was cool. This is not realistic lighting
 
@@ -1443,6 +1126,12 @@ void main() {
 	vig = min( vig, 1.0);
 	col *= vig;
 
+	// Distance Fog
+	float d = distance(isect, u_Eye);
+    float fogFactor = distanceFog(d);
+
+	vec4 tmpColor = vec4(col.xyz,1);
+	tmpColor = mix(tmpColor, vec4(RGB(1, 0.96926, 0.84853),1.0), fogFactor);
 	// Final color
 	out_Col =  vec4(col.xyz,1);
   //out_Col = vec4(0.5 * (fs_Pos + vec2(1.0)), 0.5 * (sin(u_Time * 3.14159 * 0.01) + 1.0), 1.0);

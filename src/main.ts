@@ -95,7 +95,7 @@ function main() {
   ]);
 
   flat.setTexture(0);
-
+  
   function processKeyPresses() {
     // Use this if you wish
   }
