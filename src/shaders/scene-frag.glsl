@@ -348,7 +348,7 @@ Intersection rayMarch(vec3 dir) {
 
   vec3 currentPos = u_Eye;
   float t = 0.0;
-  for (int i = 0; i < MAX_RAY_STEPS; ++i) {
+  for (int i = 0; i < MAX_RAY_STEPS && t < MAX_DISTANCE; ++i) {
     Terrain terrain = sceneSDF(currentPos);
     float distToSurface = terrain.dist;
 
@@ -363,7 +363,7 @@ Intersection rayMarch(vec3 dir) {
     currentPos += dir * distToSurface;
     t += distToSurface;
 
-    if (t > MAX_DISTANCE) {
+    if (currentPos.y > terrainMaxHeight && dir.y > 0.0) {
       break;
     }
   }
