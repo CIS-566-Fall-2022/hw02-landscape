@@ -210,23 +210,23 @@ SDF sceneSDF(vec3 queryPos)
     float lowFreqDeform = 30.0f * (noise(0.05f * queryPos.xyz));  // Range(0, 20) 
     float hiFreqDeform = 10.0f * ((0.3f * noise(0.03f * queryPos.xyz) + 1.0) / 2.f);  // Range(0, 10) 
     // deform = smoothstep(0.0f, 10.0f, deform);
-    float w = worley(0.01f*queryPos.xz) * 30.0f;
+    float w = worley(0.005f*queryPos.xz) * 30.0f;
 
     float sphere = sphereSDF(queryPos, vec3(0.0f, 15.0f, -5.0f), sphereNoise + 1.0f);
     float plane = planeSDF(queryPos, w + hiFreqDeform + lowFreqDeform - 50.0f);
-    float cloud = cloudSDF(queryPos, 30.0);
-    cloud = opScale(queryPos, 1.0f);
-    float water = planeSDF(queryPos, -30.0f);
+    // float cloud = cloudSDF(queryPos, 30.0);
+    // cloud = opScale(queryPos, 1.0f);
+    float water = planeSDF(queryPos, -25.0f);
     SDF resSDF;
     if (plane < water) {
         float dist = smoothUnion(plane, sphere, 1.0);
-        dist = smoothUnion(dist, cloud, 1.0);
+        // dist = smoothUnion(dist, cloud, 1.0);
         resSDF.sdf = dist;
         resSDF.type = 1;
         return resSDF;
     } else {
         float dist = smoothUnion(water, sphere, 1.0);
-        dist = smoothUnion(dist, cloud, 1.0);
+        // dist = smoothUnion(dist, cloud, 1.0);
         resSDF.sdf = dist;
         resSDF.type = 2;
         return resSDF;
@@ -295,14 +295,32 @@ vec3 getSceneColor(vec2 uv)
 
     DirectionalLight lights[3];
     vec3 backgroundColor = vec3(0.); // dir, color
-    lights[0] = DirectionalLight(normalize(vec3(0.0, 3.0, 10.0)),
-                                 normalize(vec3(1, 1, 1)));
+    // lights[0] = DirectionalLight(normalize(vec3(0.0, 3.0, 0.0)),
+    //                              normalize(vec3(1, 1, 1)));
     lights[1] = DirectionalLight(normalize(vec3(0., 1., 0.)),
                                   normalize(vec3(124, 104, 95)));
     lights[2] = DirectionalLight(normalize(-vec3(15.0, 0.0, 10.0)),
                                   normalize(vec3(72, 53, 39)));
     
-   
+    // lights[0].dir.y = sin(u_Time * 0.05f) * 3.0f;
+
+    // noon: z = 0
+    // morning: z = 100
+    // end: z = -100
+    // map(0,100) to (-50, 50) 
+    float sunPos = mod(u_Time*0.2f, 100.0f) - 50.0f;
+    if(abs(sunPos) < 35.0f){
+        lights[0] = DirectionalLight(normalize(vec3(sunPos, 3.0, 10.0)),
+                                        normalize(vec3(1, 1, 1)));
+    }
+    else{
+        // darker: (35,50), (-35, -50)
+        float decay = mix(0.0, 1.0, (50.0001f - abs(sunPos)) / 15.0f);
+        float decayB = mix(0.8, 1.0, (50.0001f - abs(sunPos)) / 15.0f);
+
+        lights[0] = DirectionalLight(normalize(vec3(sunPos, 3.0, 10.0)),
+                                normalize(vec3(decay, decay, decayB)));
+    }
     backgroundColor =  normalize(vec3(1.0, 1.0, 0.0));
     
     // water or mountain
@@ -350,16 +368,23 @@ vec3 getSceneColor(vec2 uv)
         if( t > 0.0 )
         {
             vec2 uv = (ro+t*rd).xz;
-            float cl = fbm( vec3(uv*0.00104, u_Time * 0.004) );
+            // float cl = fbm( vec3(uv.x*0.00104 * sin(u_Time*0.01f),  uv.x*0.00104, 0.004) );
+            // float cl = fbm( vec3(uv.xy*0.00104 * sin(u_Time*0.01f), 0.004* sin(u_Time*0.01f)) );
+            float cl = fbm( 0.001 * sin(u_Time * 0.001f) * vec3(ro+t*rd));
+
             float dl = smoothstep(0.4,0.6,cl);
             
             color = mix(color, vec3(1.0), 0.12*dl );
         }
+
+            float sun = clamp( dot(lights[0].dir, ray.direction), 0.0, 1.0 );
+            color += vec3(1.0,0.6,0.3) * pow( sun, 256.0 ); // sun
     }
 
     // sun glare
     float sun = clamp( dot(lights[0].dir, ray.direction), 0.0, 1.0 );
-    color += u_SunGlare*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
+    color += u_SunGlare * vec3(1.0,0.6,0.3) * pow( sun, 32.0 );
+
     // color = vec3(1.0);
 
     // gamma correction
@@ -370,6 +395,7 @@ vec3 getSceneColor(vec2 uv)
 /* ---------------- Main Function ----------------*/
 
 void main() {
+
 
     out_Col = vec4(getSceneColor(fs_Pos), 1.0f);
 

@@ -93,7 +93,10 @@ function main() {
   function tick() {
     sunGlareEffect = controls['Sun Glare'];
     atmosColor = vec4.fromValues(controls['Atmosphere Color'][0] /255, controls['Atmosphere Color'][1] / 255, controls['Atmosphere Color'][2] / 255, 1);
-    camera.update();
+    // camera.update();
+    camera.controls.eye[2] = camera.controls.eye[2] - 0.5;
+    // camera.controls.eye[0] = camera.controls.eye[0] - 1;
+
     // stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
