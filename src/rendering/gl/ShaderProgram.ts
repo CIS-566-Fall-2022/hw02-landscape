@@ -7,9 +7,14 @@ var activeProgram: WebGLProgram = null;
 export class Shader {
   shader: WebGLShader;
 
-  constructor(type: number, source: string) {
+  constructor(type: number, sources: Array<string>) {
     this.shader = gl.createShader(type);
-    gl.shaderSource(this.shader, source);
+    let fullSource = '#version 300 es\n' +
+        'precision highp float;';
+    for (let partialSource of sources){
+      fullSource += partialSource;
+    }
+    gl.shaderSource(this.shader, fullSource);
     gl.compileShader(this.shader);
 
     if (!gl.getShaderParameter(this.shader, gl.COMPILE_STATUS)) {
@@ -34,6 +39,7 @@ class ShaderProgram {
     this.prog = gl.createProgram();
 
     for (let shader of shaders) {
+
       gl.attachShader(this.prog, shader.shader);
     }
     gl.linkProgram(this.prog);
