@@ -17,6 +17,13 @@ const float MIN_DIST = 0.0;
 const float MAX_DIST = 50.0;
 const float EPSILON = 0.0001;
 
+mat4 translationMatrix(vec3 v) {
+	return mat4(1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                v.x, v.y, v.z, 1.0);		
+}
+
 // noise ------------------------------------------
 mat2 rotate (float a)
 {
@@ -167,8 +174,10 @@ float opHeightDisplacement(vec3 p)
 
 vec2 map (vec3 pos) {
     vec2 scene = vec2(opHeightDisplacement(pos), opHeightDisplacement(pos));
-    // vec2 scene = vec2(roundBoxSDF(pos - vec3(2.0, 1.0, 3.0), vec3(1.0), 0.1), 1.0);
-    // scene = unionSDF(scene, vec2(roundBoxSDF(pos + vec3(2.0, -7.0, 3.0), vec3(1.0), 0.1), 1.0));
+
+    //mat4 transBox = translationMatrix(vec3(0.0, 5.0, 0.0))
+    //vec2 scene = vec2(roundBoxSDF(vec3(vec4(pos, 1.0) * inverse(transBox)), vec3(1.0), 0.1), 1.0);
+    //scene = unionSDF(scene, vec2(roundBoxSDF(pos + vec3(2.0, -7.0, 3.0), vec3(1.0), 0.1), 1.0));
     return scene;
 }
 
@@ -195,6 +204,7 @@ vec3 rayDirection (float fov, vec2 size, vec2 uv) {
     return normalize(vec3(xy, -z));
 }
 
+// looks ugly
 float softshadow (vec3 eye, vec3 dir, float start, float end) {
     float shadow = 1.0;
     float depth = start;
@@ -301,26 +311,6 @@ void main () {
     vec3 right = normalize(cross(u_Up, forward));
     vec3 dir = rayDirection(100.0, u_Dimensions, vec2(gl_FragCoord.x, gl_FragCoord.y));
     dir = normalize(dir.x * right + dir.y * u_Up + dir.z * forward);
-
-    // out_Col = vec4(dir, 1.0);
-    // return;
-
-    //float dist = raymarch(eye, dir, MIN_DIST, MAX_DIST);
-
-    //if (dist > MAX_DIST - EPSILON) {
-        // didn't hit anything
-    //    out_Col = vec4(0.0, 0.0, 0.0, 0.0);
-	//	return;
-    //}
-
-    //vec3 p = eye + dist * dir;
-    
-    //vec3 kA = vec3(0.2, 0.2, 0.2);
-    //vec3 kD = vec3(0.7, 0.2, 0.2);
-    //vec3 kS = vec3(1.0, 1.0, 1.0);
-    //float shiny = 10.0;
-    
-    //vec3 color = illumination(kA, kD, kS, shiny, p, eye);
 
     // render scene
     vec3 color = render(u_Eye, dir);
