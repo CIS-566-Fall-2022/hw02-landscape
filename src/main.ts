@@ -6,6 +6,7 @@ import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
 import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
+import {gl} from './globals';
 
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
@@ -22,6 +23,23 @@ function loadScene() {
   square.create();
   // time = 0;
 }
+
+function loadTexture(url: string) {
+  const texture = gl.createTexture();
+  const image = new Image();
+
+  image.onload = e => {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+      gl.generateMipmap(gl.TEXTURE_2D);
+  };
+
+  image.src = url;
+  return texture;
+}
+
 
 function main() {
   window.addEventListener('keypress', function (e) {
@@ -67,10 +85,17 @@ function main() {
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
 
+  //load texture
+  const gradientTexture = loadTexture('./texture/texture1.png');
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, gradientTexture);
+
   const flat = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
   ]);
+
+  flat.setTexture(0);
 
   function processKeyPresses() {
     // Use this if you wish
