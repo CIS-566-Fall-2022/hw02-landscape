@@ -1,5 +1,7 @@
 # Project 2: SDFs
 
+https://viviviantung.github.io/hw02-landscape/
+
 This project was a little bit of a journey for me. This past week has been overwhelming and stressful, and I put in as much time and effort as I was able to. I was still able to learn a lot through this project, and although there were things I wish I could figure out and continue working on, I am proud of what I was able to create in the time period I gave myself.
 
 So first, I created a raymarcher using the code provided in class. I defined the max marching steps, as well as the minimum and maximum distance of marching. I then created an SDF sphere and painted it red. I used this tutorial https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/ to help me get started.
