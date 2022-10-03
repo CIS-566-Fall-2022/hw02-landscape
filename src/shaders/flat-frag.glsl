@@ -5,6 +5,9 @@ uniform vec3 u_Eye, u_Ref, u_Up;
 uniform vec2 u_Dimensions;
 uniform float u_Time;
 
+uniform float u_SunGlare;
+uniform vec3 u_Atmosphere;
+
 in vec2 fs_Pos;
 out vec4 out_Col;
 
@@ -325,9 +328,9 @@ vec3 getSceneColor(vec2 uv)
 
 
         }
-                // atmosphere
+        // atmosphere
         float lamda = pow(EULER_NUMBER, -0.0005f * intersection.distance);
-        color = lamda * color + (1.0f - lamda) * vec3(0.73f, 0.73f, 0.73f);
+        color = lamda * color + (1.0f - lamda) * u_Atmosphere;
     
     }
 
@@ -356,7 +359,7 @@ vec3 getSceneColor(vec2 uv)
 
     // sun glare
     float sun = clamp( dot(lights[0].dir, ray.direction), 0.0, 1.0 );
-    color += 0.4*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
+    color += u_SunGlare*vec3(1.0,0.6,0.3)*pow( sun, 32.0 );
     // color = vec3(1.0);
 
     // gamma correction

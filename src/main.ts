@@ -1,6 +1,8 @@
-import {vec2, vec3} from 'gl-matrix';
+import {vec2, vec3, vec4} from 'gl-matrix';
 // import * as Stats from 'stats-js';
 // import * as DAT from 'dat-gui';
+const dat = require('dat.gui');
+
 import Square from './geometry/Square';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
@@ -12,10 +14,16 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
+  'Sun Glare': 0.5,
+  'Atmosphere Color': [ 178, 178, 178 ],
+  'Shaders': 'Fireball',
+  'Noise Color': [ 255, 255, 0 ],
 };
 
 let square: Square;
 let time: number = 0;
+let sunGlareEffect: number = 1.0;
+let atmosColor: vec4;
 
 function loadScene() {
   square = new Square(vec3.fromValues(0, 0, 0));
@@ -46,7 +54,12 @@ function main() {
   // document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
-  // const gui = new DAT.GUI();
+  const gui = new dat.GUI();
+  // gui.add(controls, 'tesselations', 0, 8).step(s1);
+  // gui.add(controls, 'Load Scene');
+  gui.addColor(controls, 'Atmosphere Color');
+  // gui.addColor(controls, 'Noise Color');
+  gui.add(controls, 'Sun Glare', 0, 1).step(0.1);
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -78,6 +91,8 @@ function main() {
 
   // This function will be called every frame
   function tick() {
+    sunGlareEffect = controls['Sun Glare'];
+    atmosColor = vec4.fromValues(controls['Atmosphere Color'][0] /255, controls['Atmosphere Color'][1] / 255, controls['Atmosphere Color'][2] / 255, 1);
     camera.update();
     // stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
@@ -85,7 +100,7 @@ function main() {
     processKeyPresses();
     renderer.render(camera, flat, [
       square,
-    ], time);
+    ], time, sunGlareEffect, atmosColor);
     time++;
     // stats.end();
 
