@@ -1,5 +1,39 @@
 # Project 2: SDFs
 
+This project was a little bit of a journey for me. This past week has been overwhelming and stressful, and I put in as much time and effort as I was able to. I was still able to learn a lot through this project, and although there were things I wish I could figure out and continue working on, I am proud of what I was able to create in the time period I gave myself.
+
+So first, I created a raymarcher using the code provided in class. I defined the max marching steps, as well as the minimum and maximum distance of marching. I then created an SDF sphere and painted it red. I used this tutorial https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/ to help me get started.
+
+![](red-circle.png)
+
+After that, I continued following the tutorial to create a sphere using phong light contibution and illumination. I used the wikipedia page of phong lighting to help write the functions. I also made the lights move using a cosine function.
+
+![](red-sphere.png)
+
+After this is when I got really confused. I was very stuck on how to create a terrain, since all I knew was how to make SDFs show up on the screen. I didn't really understand how to deform the mesh. But then I looked up https://iquilezles.org/articles/terrainmarching/ to figure out how to get it to work. I found a polyfbm noise that seemed cool on shadertoy (https://www.shadertoy.com/view/lsySRc, https://www.shadertoy.com/view/ldGSzc), and I implemented it into my code. Thus, I created a height displacement function to utilize this noise to displace a plane SDF. I also multiplied it by a cosine function so that the displacement changed over time.
+
+I never wanted to create a realistic scene. I was at first aiming for a lofi-style neighborhood scene, but after having the default values being orangey, I started thinking about an old west theme or a mars extraterrestrial theme haha.
+
+I also created the lights (https://learnopengl.com/Advanced-Lighting/SSAO), creating a normal key light, an ambient light, a diffuse light, a back light, and a specular light. I moved the lights using a cosine function so that at certain times, my terrain is completely dark. I then ended up changing the sky background so that when the terrain is dark, the sky is dark as well. I then tried to incorporate ambient occlusion, as well as soft shadows, but the shadows looked really ugly to me and took away from the vibe I felt like I was going for, so I ended up commenting it out.
+
+![](light-land-basic.png)
+
+![](dark-land-basic.png)
+
+My next issue was then trying to change the color of the noise based on its height. When I first tried to implement it, no matter what I did, the height of the terrain seemed to stay at 50. However, then I realized I had manually set that value in my height displacement function, so once I changed that value to the noise function as well, everything seemed to work fine. I chose my colors through a color pallete generator. I also really liked the stripey pattern that the colors made in the terrain, so I'm generally okay with how the terrain turned out.
+
+![](light-land-less-basic.png)
+
+![](ambient-occlusion.png)
+
+I also tried to put noise in the sky, since that was part of the instructions. Currently, I have perlin noise in the background. I don't really like how it works during the daytime, but in the night cycle, I like how the black bleeds into the other colors. If I have time, I want to blend worley with the perlin to make the sky more cloudy, but honestly I also like the sky without any noise. I feel like it fits the vibe better. 
+
+I also tried to figure out how to add other SDFs into the screen, but whenever I did, it would create the shape behind me, no matter how I translated it. I was really confused, and then I discovered that my camera was weird, because whenever I attempted to rotate my screen, the terrain wouldn't rotate. So then I implemented the u_Ref and u_Up uniform variables into the fragment shader, and manipulated them to find the forward and the right vector of the camera. Now, the camera seems to rotate correctly, but the controls are really sensitive, so I wouldn't reccommend doing it.
+
+I added some SDF shapes and operations that I think work because I tested it be taking out my terrain and creating the shapes using the union operation, but they always are created behind the camera and I was unable to figure it out. 
+
+TLDR, although I'm not completely satisfied with my terrain and I really wish I could add building shapes into my scene, I'm proud of what I was able to learn through this project and how this project was able to allow me to get more experience with SDFs and ray marching. I just wish I had more time to experiment more with the different aspects of this project.
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
