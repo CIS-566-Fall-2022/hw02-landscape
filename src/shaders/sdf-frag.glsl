@@ -28,6 +28,7 @@ struct Ray
 
 struct Intersection
 {
+    vec3 point;
     vec3 normal;
     float t;
 };
@@ -71,6 +72,18 @@ vec2 noise2Dv( vec2 p ) {
     return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5,183.3)))) * 43758.5453);
 }
 
+float noise3Df(vec3 p) 
+{
+    return fract(sin((dot(p, vec3(127.1, 311.7, 191.999)))) * 43758.5453);
+}
+
+vec3 noise3Dv(vec3 p) {
+    return fract(sin(vec3(dot(p, vec3(127.1, 311.7, 191.999)),
+                 dot(p, vec3(269.5,183.3,483.1)),
+                 dot(p, vec3(564.5,96.3,223.9))))
+                 * 43758.5453);
+}
+
 float cosineInterpolate(float a, float b, float t)
 {
     float cos_t = (1.f - cos(t * PI)) * 0.5f;
@@ -111,6 +124,79 @@ float fbm2D(vec2 p)
         float perlin = interpolateNoise2D(p.x * freq, p.y * freq);
         total += amp * (0.5 * (perlin + 1.0));
     }
+    return total;
+}
+
+float worley3D(vec3 p) {
+    // Tile space
+    p *= 2.0;
+    vec3 pInt = floor(p);
+    vec3 pFract = fract(p);
+    float minDist = 1.0; // Minimum distance
+
+    // Iterate through neighboring cells to find closest point
+    for(int z = -1; z <= 1; ++z) {
+        for(int y = -1; y <= 1; ++y) {
+            for(int x = -1; x <= 1; ++x) {
+                vec3 neighbor = vec3(float(x), float(y), float(z)); 
+                vec3 point = noise3Dv(pInt + neighbor); // Random point in neighboring cell
+                
+                // Distance between fragment and neighbor point
+                vec3 diff = neighbor + point - pFract; 
+                float dist = length(diff); 
+                minDist = min(minDist, dist);
+            }
+        }
+    }
+
+    // Set pixel brightness to distance between pixel and closest point
+    return minDist;
+}
+
+float interpolateNoise3D(float x, float y, float z)
+{
+    // Get integer and fractional components of current position
+    int intX = int(floor(x));
+    float fractX = fract(x);
+    int intY = int(floor(y));
+    float fractY = fract(y);
+    int intZ = int(floor(z));
+    float fractZ = fract(z);
+
+    // Get noise value at each of the 8 vertices
+    float v1 = noise3Df(vec3(intX, intY, intZ));
+    float v2 = noise3Df(vec3(intX + 1, intY, intZ));
+    float v3 = noise3Df(vec3(intX, intY + 1, intZ));
+    float v4 = noise3Df(vec3(intX + 1, intY + 1, intZ));
+    float v5 = noise3Df(vec3(intX, intY, intZ + 1));
+    float v6 = noise3Df(vec3(intX + 1, intY, intZ + 1));
+    float v7 = noise3Df(vec3(intX, intY + 1, intZ + 1));
+    float v8 = noise3Df(vec3(intX + 1, intY + 1, intZ + 1));
+
+    // Interpolate in the X, Y, Z directions
+    float i1 = cosineInterpolate(v1, v2, fractX);
+    float i2 = cosineInterpolate(v3, v4, fractX);
+    float mix1 = cosineInterpolate(i1, i2, fractY);
+    float i3 = cosineInterpolate(v5, v6, fractX);
+    float i4 = cosineInterpolate(v7, v8, fractX);
+    float mix2 = cosineInterpolate(i3, i4, fractY);
+    return cosineInterpolate(mix1, mix2, fractZ);
+}
+
+float fbm3D(vec3 p)
+{
+    float total = 0.f;
+    float persistence = 0.5f;
+    int octaves = 3;
+
+    for (int i = 1; i < octaves; ++i)
+    {
+        float freq = pow(2.f, float(i));
+        float amp = pow(persistence, float(i));
+
+        total += amp * interpolateNoise3D(p.x * freq, p.y * freq, p.z * freq);
+    }
+
     return total;
 }
 
@@ -157,21 +243,27 @@ float planeSDF(vec3 rayPos, float h)
 
 float groundSDF(vec3 rayPos, out Material mat)
 {
-    float wOffset = 1.f - worley2D(0.1 * rayPos.xz);
-    //float wOffset = 0.0;
+    float wOffset = 1.f - worley2D(0.1 * rayPos.xz + sin(0.01 * u_Time));
     float water = planeSDF(rayPos - wOffset, -43.0);
 
     float xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
     float zOffset = cos(0.15 * rayPos.y - 1.0f);
-    float cliff = roundedBoxSDF(rayPos, vec3(-85.0 + xOffset, -25.0, -60.0 + zOffset), rotateY3D(-0.408), vec3(20.5, 15.5, 55.5), 5.5);
+    float cliff = roundedBoxSDF(rayPos, vec3(-45.0 + xOffset, -25.0, -80.0 + zOffset), rotateY3D(-0.508), vec3(20.5, 15.5, 55.5), 5.5);
     float dMin = min(water, cliff);
 
     //float yOffset = 3.f * cos(0.05 * rayPos.x) * 2.f * sin(0.05 * rayPos.z) + (1.f - xOffset);
     float mNoise = fbm2D(0.01 * rayPos.xz);
     float yOffset = 200.f * mNoise;
     float mountains = roundedBoxSDF(rayPos, vec3(-600.0, -253.0 + yOffset, -200.0 - yOffset), rotateY3D(-0.408), vec3(20.5, 0.5, 500.5), 120.5);
-
     dMin = min(dMin, mountains);
+
+    //yOffset = fbm2D(vec2(sin(rayPos.x + 1.0f), sin(rayPos.z + 3.0f)));
+    yOffset = 2.f * worley2D(0.15 * rayPos.xz);
+    //yOffset = bias(0.7, yOffset);
+    yOffset = smoothstep(0.3, 0.9, 1.0 - yOffset);
+    //yOffset = pow(yOffset, 5.0);
+    float grass = roundedBoxSDF(rayPos, vec3(-45.0 + xOffset, -10.0 + yOffset, -80.0 + zOffset), rotateY3D(-0.508), vec3(19.0, 2.0, 55.5), 5.5);
+    dMin = min(dMin, grass);
 
     if (dMin == water)
     {
@@ -180,8 +272,11 @@ float groundSDF(vec3 rayPos, out Material mat)
     else if (dMin == cliff) {
         mat.color = vec3(0.8, 0.7, 0.6);
     }
+    else if (dMin == mountains) {
+        mat.color = mix(vec3(0.7, 0.3, 0.2), vec3(10.0, 10.0, 10.0), bias(mNoise, 0.01));
+    }
     else {
-        mat.color = mix(vec3(0.7, 0.3, 0.2), vec3(5.0, 5.0, 5.0), bias(mNoise, 0.03));
+        mat.color = vec3(0.0, 1.0, 0.0);
     }
     
     return dMin;
@@ -189,9 +284,31 @@ float groundSDF(vec3 rayPos, out Material mat)
 
 float treeSDF(vec3 rayPos, out Material mat)
 {
-    float sphere = sphereSDF(rayPos, vec3(-85.0, -10.0, -60.0), 8.0);
-    mat.color = vec3(0.0, 1.0, 0.0);
-    return sphere;
+    vec3 p = rotateY3D(0.978) * rayPos;
+    //p.y += 1.4f * sin(rayPos.x - 1.5f) + 2.0f; 
+    
+    //vec3 q = vec3(p.x, p.y, mod(p.z, 1.0)) + vec3(fbm3D(0.3 * p.xyz));
+    vec3 q = p;
+    // Finite repetition
+    //q = q - 2.0 * clamp(round(q / 2.0), vec3(-80.0, 0.0, -30.0), vec3(80.0, 0.0, 30.0));
+    //float sphere = sphereSDF(q, vec3(-80.0, -3.0, 10.0), 10.0);
+
+    // Deform sphere to look like trees/bush
+    //float displacement = sin(10.0*p.x);
+    float displacement = fbm3D(0.5 * p.xyz);
+    //float displacement = 0.0;
+    //sphere += displacement;
+    //float sphere2 = sphereSDF(q, vec3(-80.0, -3.0, 20.0), 10.0);
+    //float sphere3 = sphereSDF(q, vec3(-90.0, -3.0, 10.0), 10.0);
+    
+    float xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
+    float zOffset = cos(0.15 * rayPos.y - 1.0f);
+    float grass = roundedBoxSDF(rayPos, vec3(-45.0, -25.0, -80.0), rotateY3D(-0.008), vec3(20.5, 0.5, 500.5), 5.5);
+
+    //mat.color = mix(vec3(0.0, 0.9, 0.2), vec3(0.0, 0.8, 0.3), displacement) * displacement;
+    mat.color = vec3(0.0, 2.8, 0.8) * displacement;
+    //return min(sphere, min(sphere2, sphere3)) + displacement;
+    return grass;
 }
 
 float bridgeSDF(vec3 rayPos, out Material mat)
@@ -244,26 +361,32 @@ float sceneSDF(vec3 rayPos, out Material mat)
 {
     Material groundMat;
     float ground = groundSDF(rayPos, groundMat);
+    float dMin = ground;
 
     Material bridgeMat;
-    float bridge = bridgeSDF(rayPos, bridgeMat);
-    float dMin = min(ground, bridge);
+    //float bridge = bridgeSDF(rayPos, bridgeMat);
+    //float dMin = min(ground, bridge);
 
     Material treeMat;
-    //float trees = treeSDF(rayPos, treeMat);
-    //dMin = min(dMin, trees);
+    float trees = INFINITY;
+    //if (rayPos.x < -78.0 && rayPos.x > -100.0)
+    //{
+        //trees = treeSDF(rayPos, treeMat);
+        //dMin = min(dMin, trees);
+    //}
 
     // Assign color
     //float dMin = min(ground, bridge);
     if (dMin == ground) {
         mat.color = groundMat.color;
     }
-    else if (dMin == bridge) {
+    /*else if (dMin == bridge) {
         mat.color = bridgeMat.color;
     }
     else {
         mat.color = treeMat.color;
-    }
+    }*/
+
     return dMin;
 }
 
@@ -286,7 +409,7 @@ vec3 getBackgroundColor(Ray ray)
         color = mix(vec3(2.0), color, lambda);
     }
 
-    // Sun
+    /*// Sun
     float sunSize = 5.0;
     vec3 sunPosition = vec3(-1000.0, 73.0, 0.0);
     vec3 sunDirection = normalize(sunPosition - ray.origin);
@@ -303,7 +426,7 @@ vec3 getBackgroundColor(Ray ray)
         {
             color = mix(sunColor, color, (angle - 3.0) / 2.0);
         }
-    }
+    }*/
 
     return color;
 }
@@ -335,6 +458,24 @@ vec3 estimateNormal(vec3 p)
     return normalize(vec3(gx, gy, gz));
 }
 
+float calcShadows(vec3 rayOrigin, vec3 rayDirection, float k)
+{
+    Material mat;
+    float res = 1.0;
+    for (float t = 2.0; t < float(MAX_STEPS); ++t)
+    {
+        vec3 p = rayOrigin + t * rayDirection;
+        float s = sceneSDF(p, mat);
+        if (s < EPSILON)
+        {
+            return 0.0;
+        }
+        res = min(res, k * s / t);
+        t += s;
+    }
+    return res;
+}
+
 Intersection raymarch(vec2 uv, Ray ray, out Material mat)
 {
     Intersection intersection;
@@ -345,6 +486,7 @@ Intersection raymarch(vec2 uv, Ray ray, out Material mat)
         float dist = sceneSDF(p, mat);
         if (dist < EPSILON)
         {
+            intersection.point = p;
             intersection.normal = estimateNormal(p);
             intersection.t = length(p - ray.origin);
             return intersection;
@@ -400,14 +542,15 @@ void main() {
     Intersection isect = raymarch(ndc, ray, mat);
     //Intersection isect = raymarchTerrain(ndc, ray);
 
-    // If intersected scene, shade with color
-    // Otherwise, return background color
+    // Lighting calculations
     if (isect.t > 0.0) 
     {
         for (int i = 0; i < 3; i++)
         {
+            //float shadow = calcShadows(isect.point, lights[i].direction, 3.0);
+            float shadow = 1.0;
             float cosTheta = max(0.0, dot(isect.normal, lights[i].direction));
-            color += mat.color * lights[i].color * cosTheta;
+            color += mat.color * lights[i].color * cosTheta * clamp(0.0, 0.5, shadow);
         }    
     }
     else 
@@ -415,9 +558,13 @@ void main() {
         color = getBackgroundColor(ray);
     }
 
+    // Distance fog
+    vec3 fog_dist = exp(-0.001 * isect.t * vec3(1.0, 1.8, 2.0));
+    vec3 fog_t = smoothstep(0.0, 0.8, fog_dist);
+    color = mix(vec3(0.5, 0.85, 0.85), color, fog_t);
+
     // Gamma correction
     color = pow(color, vec3(1.0 / 2.2));
-    //color = gain
 
     // Compute final shaded color
     out_Col = vec4(color.rgb, 1.0);

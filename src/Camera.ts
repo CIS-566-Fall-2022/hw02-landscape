@@ -1,8 +1,8 @@
-var CameraControls = require('3d-view-controls');
+//var CameraControls = require('3d-view-controls');
 import {vec3, mat4} from 'gl-matrix';
 
 class Camera {
-  controls: any;
+  //controls: any;
   projectionMatrix: mat4 = mat4.create();
   viewMatrix: mat4 = mat4.create();
   fovy: number = 45;
@@ -14,13 +14,13 @@ class Camera {
   target: vec3 = vec3.create();
   up: vec3 = vec3.create();
 
-  constructor(position: vec3, target: vec3) {
-    this.controls = CameraControls(document.getElementById('canvas'), {
+  constructor(position: vec3, target: vec3, up: vec3) {
+    /*this.controls = CameraControls(document.getElementById('canvas'), {
       eye: position,
       center: target,
-    });
-    vec3.add(this.target, this.position, this.direction);
-    mat4.lookAt(this.viewMatrix, this.controls.eye, this.controls.center, this.controls.up);
+    });*/
+    //vec3.add(this.target, this.position, this.direction);
+    mat4.lookAt(this.viewMatrix, vec3.fromValues(8, 2, 10), vec3.fromValues(-13, 0, 0), vec3.fromValues(0, 1, 0));
   }
 
   setAspectRatio(aspectRatio: number) {
@@ -32,9 +32,9 @@ class Camera {
   }
 
   update() {
-    this.controls.tick();
-    vec3.add(this.target, this.position, this.direction);
-    mat4.lookAt(this.viewMatrix, this.controls.eye, this.controls.center, this.controls.up);
+    //this.controls.tick();
+    //vec3.add(this.target, this.position, this.direction);
+    mat4.lookAt(this.viewMatrix, vec3.fromValues(8, 2, 10), vec3.fromValues(-13, 0, 0), vec3.fromValues(0, 1, 0));
   }
 };
 
