@@ -16,11 +16,7 @@ out vec4 out_Col;
 // COLOR SCHEME
 const float _FogMul = -0.00800 ;
 const float _FogPow = 1.00000 ;
-const float _IncorrectGammaCorrect = 1.00000 ;
-const vec3 _LightDir = vec3(-0.23047, 0.87328, -0.42927) ;
-const float _Brightness = 0.40000 ;
-const float _Contrast = 0.83000 ;
-const float _Saturation = 1.21000 ;
+const vec3 _LightDir = vec3(-0.33047, 0.77328, -0.42927) ;
 const vec3 _SunStar = vec3(7.7, 6.17, 0.1) ;
 const float _SunSize = 26.00000 ;
 const float _SunScale = 15.00000 ;
@@ -33,7 +29,6 @@ const float _ZenithFallOff = 2.36000 ;
 const RGB _Nadir = RGB(1, 0.93103, 0) ;
 const float _NadirFallOff = 1.91000 ;
 const RGB _Horizon = RGB(0.96324, 0.80163, 0.38954) ;
-const vec3 _CharacterAOParams = vec3(0.03, 7.36, 0) ;
 const RGB _CharacterMainColor = RGB(0.60294, 0.1515, 0.062067) ;
 const RGB _CharacterTerrainCol = RGB(0.35294, 0.16016, 0.12197) ;
 const RGB _CharacterCloakDarkColor = RGB(0.25735, 0.028557, 0.0056769) ;
@@ -143,13 +138,13 @@ const vec3 _CharacterTrailScale = vec3(0.001, 0, 0.5) ;
 const vec3 _CharacterTrailWave = vec3(1.97, 0, 0.34) ;
 const vec2 _CharacterHeightTerrainMix = vec2(1.95, -30) ;
 const vec3 _CloudNoiseStrength = vec3(0.2, 0.16, 0.1) ;
-const vec3 _FrontCloudsPos = vec3(9.91, 8.6, -12.88) ;
+const vec3 _FrontCloudsPos = vec3(9.91, 8.6, -15.00) ;
 const vec3 _FrontCloudsOffsetA = vec3(-9.1, 3.04, 0) ;
 const vec3 _FrontCloudsOffsetB = vec3(-2.97, 3.72, -0.05) ;
 const vec3 _FrontCloudParams = vec3(5.02, 3.79, 5) ;
 const vec3 _FrontCloudParamsA = vec3(3.04, 0.16, 2) ;
 const vec3 _FrontCloudParamsB = vec3(1.34, 0.3, 3.15) ;
-const vec3 _BackCloudsPos = vec3(29.99, 13.61, -18.8) ;
+const vec3 _BackCloudsPos = vec3(29.99, 13.61, -20.8) ;
 const vec3 _BackCloudsOffsetA = vec3(24.87, -1.49, 0) ;
 const vec3 _BackCloudParams = vec3(7.12, 4.26, 1.68) ;
 const vec3 _BackCloudParamsA = vec3(6.37, 2.23, 2.07) ;
@@ -216,9 +211,8 @@ const vec4 _FlyingScarfSideWindParams = vec4(2.46, -1.59, -0.05, 0.21) ;
 
 #define MAT_CHARACTER_BASE 50.0
 #define MAT_CHARACTER_MAIN_CLOAK 51.0
-#define MAT_CHARACTER_NECK_SCARF 52.0
-#define MAT_CHARACTER_LONG_SCARF 53.0
-#define MAT_CHARACTER_FACE 54.0
+#define MAT_CHARACTER_HAIR 52.0
+#define MAT_CHARACTER_DRESS 53.0
 
 #define TEST_MAT_LESS( a, b ) a < (b + 0.1)
 #define TEST_MAT_GREATER( a, b ) a > (b - 0.1)
@@ -559,28 +553,83 @@ vec2 sdDesert( in vec3 pos, in float terrain )
 //==========================================================================================
 float sdCharacter(vec3 pos)
 {
-    pos -= vec3(-0.1, -0.4, -0.5);
-    float res = 10000000.0;
-	float head = sdSphere(pos + vec3(0.0, -0.05, 0.0), 0.1);
-	res = min(res, head);
-	float hairL = sdSphere(pos + vec3(-0.11, -0.1, -0.05), 0.06);
-	res = min(res, hairL);
-	float hairR = sdSphere(pos + vec3(0.11, -0.1, -0.05), 0.06);
-    res = min(res, hairR);
+  pos -= vec3(-0.1, -0.4, -0.5);
+  float res = 10000000.0;
+  float head = sdSphere(pos + vec3(0.0, -0.05, 0.0), 0.1);
+  res = min(res, head);
+  float hairL = sdSphere(pos + vec3(-0.11, -0.1, -0.05), 0.06);
+  res = min(res, hairL);
+  float hairR = sdSphere(pos + vec3(0.11, -0.1, -0.05), 0.06);
+  res = min(res, hairR);
 
-	float cloak = sdCone(pos, vec2(0.9, 0.5), 0.2);
-	
-	res = smoothUnion(res, cloak, 0.01);
+  float cloak = sdCone(pos, vec2(0.9, 0.5), 0.2);
+  
+  res = smoothUnion(res, cloak, 0.01);
 
-	float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.15, 0.1));
-	res = min(res, body);
+  float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.15, 0.1));
+  res = min(res, body);
 
-	float leftLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.0), 0.1, 0.03);
+  float leftLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.0), 0.1, 0.03);
     float rightLeg = sdVerticalCapsule(pos + vec3(0.08, 0.4, 0.0), 0.1, 0.03);
-	float dt2 = min(leftLeg, rightLeg);
+  float dt2 = min(leftLeg, rightLeg);
 
-	res = min(res,dt2);
-    return res;
+  res = min(res,dt2);
+  return res;
+}
+
+vec2 sdCharacter1(vec3 pos)
+{
+  pos -= _TemplePosition;
+  vec3 scale = _TempleScale;
+  float scaleMul = min(scale.x, min(scale.y, scale.z));
+
+  rY(pos, - _TempleRotation);
+  pos /= scale;
+  pos -= vec3(4.1, 0.0, -1.5);
+
+  float head = sdSphere(pos + vec3(0.0, -0.05, 0.0), 0.1);
+  vec2 headMat = vec2(head, MAT_CHARACTER_BASE);
+
+  float hair;
+
+  float hairR1 = sdSphere(pos + vec3(-0.11, -0.02, -0.05), 0.05);
+  float hairL1 = sdSphere(pos + vec3(0.11, -0.02, -0.05), 0.05);
+  hair = min(hairL1, hairR1);
+
+  float hairR2 = sdSphere(pos + vec3(-0.15, 0.03, -0.08), 0.04);
+  float hairL2 = sdSphere(pos + vec3(0.18, 0.03, -0.08), 0.04);
+  hair = min(hair, min(hairL2, hairR2));
+
+  float hairR3 = sdSphere(pos + vec3(-0.18, 0.07, -0.12), 0.03);
+  float hairL3 = sdSphere(pos + vec3(0.24, 0.07, -0.12), 0.03);
+  hair = min(hair, min(hairL3, hairR3));
+
+  float hairMainT = sdSphere(pos + vec3(0.0, -0.05, 0.0), 0.12);
+  float hairMainB = sdBox(pos + vec3(0.0, 0.2, 0.0), vec3(0.2, 0.2, 0.2));
+  float hairM = smoothSubtraction(hairMainB, hairMainT, 0.01);
+
+  hair = min(hair, hairM);
+  vec2 hairMat = vec2(hair, MAT_CHARACTER_HAIR);
+  hairMat = min_mat(headMat, hairMat);
+
+  float cloak = sdCone(pos, vec2(0.9, 0.5), 0.2);
+  //clock = smoothUnion(head, cloak, 0.01);
+  vec2 clockMat = vec2(cloak, MAT_CHARACTER_MAIN_CLOAK);
+  clockMat = min_mat(hairMat, clockMat);
+
+  float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.15, 0.1));
+  vec2 bodyMat = vec2(body, MAT_CHARACTER_DRESS);
+  bodyMat = min_mat(clockMat, bodyMat);
+
+  float leftLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.0), 0.1, 0.03);
+  float rightLeg = sdVerticalCapsule(pos + vec3(0.08, 0.4, 0.0), 0.1, 0.03);
+  float legs = min(leftLeg, rightLeg);
+  vec2 legsMat = vec2(legs, MAT_CHARACTER_BASE);
+  
+  vec2 characterMat = min_mat(legsMat, bodyMat);
+  characterMat.x *= scaleMul;
+
+  return characterMat;
 }
 
 //==========================================================================================
@@ -721,9 +770,9 @@ vec2 sdTemples (vec3 pos) {
   
   float res = 10000000.0;
   
-  float midTemple1 = sdMidTemple(pos, 0.8);
+  float midTemple1 = sdMidTemple(pos- vec3(1.2, 0.0, 0.0), 0.8);
   res = min(res, midTemple1);
-  float midTemple2 = sdMidTemple(pos - vec3(2.5, -1.0, 0.0), 0.4);
+  float midTemple2 = sdMidTemple(pos - vec3(3.0, -1.0, 0.0), 0.4);
   res = min(res, midTemple2);
 
   rY(pos, _TempleRotation);
@@ -731,10 +780,10 @@ vec2 sdTemples (vec3 pos) {
 
 
   float frontTemple = sdFrontTemple(pos);
-  float character = sdCharacter(pos);
+  //float character = sdCharacter(pos);
 
   res = min(res, frontTemple);
-  res = min(res, character);
+  //res = min(res, character);
 
   pos *= scale;
   rY(pos, -_TempleRotation * 3.0);
@@ -809,16 +858,20 @@ vec2 sdClouds( in vec3 pos )
 //==========================================================================================
 vec2 map( in vec3 pos )
 {
-  vec2 temple = sdTemples(pos);
-	vec2 res = temple; 
+  // vec2 temple = sdTemples(pos);
+  // vec2 character = sdCharacter1(pos);
+	// vec2 res = min_mat(temple, character); 
+  vec2 character = sdCharacter1(pos);
+	vec2 res = character;
   
   if( res.x > 0.01 )
   {
     float desert = sdTerrain(pos);
 
     vec2 terrain   = sdDesert(pos, desert);
+    vec2 temple = sdTemples(pos);
 
-    res	= min_mat( res, terrain); 
+    res	= min_mat( res, min_mat(terrain, temple) ); 
     if( terrain.x > 0.01 )
     {
       vec2 pyramid   = vec2(sdBigMountain(pos), MAT_PYRAMID);
@@ -882,7 +935,22 @@ vec3 calcNormal( in vec3 pos )
 //==========================================================================================
 float softShadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k )
 {
-	return 0.0;
+    float res = 1.0;
+    float t = mint;
+    for(int i = 0; i < 100; ++i)
+    {
+      if (t >= maxt) {
+          break;
+      }
+    	float temples = sdTemples( ro + rd * t).x;
+    	float character = sdCharacter1( ro + rd * t ).x;
+      float h = min(temples, character );
+      if( h< 0.001 )
+          return 0.1;
+      res = min( res, k*h/t );
+      t += h;
+    }
+	return res;
 }
 
 //==========================================================================================
@@ -1059,6 +1127,48 @@ vec3 render( in vec3 ro, in vec3 rd )
 		vec3 col	= mix( _TombMainColor, _TombScarfColor * 2.0, m - MAT_TOMB );
 		return mix( diff * col, skyCol, skyFog);
 	}
+
+  // Character
+	if( TEST_MAT_GREATER (m, MAT_CHARACTER_BASE ) )
+	{
+    float diff = _CharacterDiffScale * clamp( dot( nor, _LightDir ), 0.0, 1.0 );
+
+    // Why did I fudge these normals, I can't remember. It does look good though, so keep it :)
+    nor		= normalize( nor + vec3(0.3,-0.1,1.0));
+    nor.y	*= 0.3;
+
+    float fres	= pow( clamp( 1.0 + dot(nor,rd) + 0.75, 0.0, 1.0), _CharacterFrePower ) * _CharacterFreScale;
+    vec3 col	= _CharacterMainColor;
+
+    // Just base color
+    if( TEST_MAT_LESS( m, MAT_CHARACTER_BASE) )
+    {
+      // Add sand fade to legs. Mixing terrain color at bottom of legs
+			float heightTerrainMix	= pow((pos.y / _CharacterHeightTerrainMix.x), _CharacterHeightTerrainMix.y);
+			heightTerrainMix		= clamp( heightTerrainMix, 0.0, 1.0 );
+			col	= mix( _CharacterMainColor, _CharacterTerrainCol, heightTerrainMix );
+    }
+    // Main Cloak
+    else if( TEST_MAT_LESS( m,MAT_CHARACTER_MAIN_CLOAK) )
+    {
+      col = _CharacterCloakDarkColor;
+      return col;
+    }
+    else if( TEST_MAT_LESS( m,MAT_CHARACTER_HAIR)) 
+    {
+      col = vec3(1.0, 1.0, 1.0);
+      return col;
+    }
+    else if( TEST_MAT_LESS( m,MAT_CHARACTER_DRESS)) 
+    {
+      col = _CharacterMainColor;
+      return col;
+    }
+    else {
+      col = _CharacterMainColor;
+      return col;
+    }
+  }
 	return vec3( clamp(col * 0.0,0.0,1.0) );
 }
 
