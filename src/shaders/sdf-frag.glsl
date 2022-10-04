@@ -15,6 +15,7 @@ const vec3 EYE = vec3(0.0, 2.5, 5.0);
 const vec3 REF = vec3(0.0, 1.0, 0.0);
 const vec3 WORLD_UP = vec3(0.0, 1.0, 0.0);
 const vec3 WORLD_RIGHT = vec3(-1.0, 0.0, 0.0);
+
 const vec3 WORLD_FORWARD = vec3(0.0, 0.0, 1.0);
 
 const vec3 LIGHT_DIR = vec3(0.6, 1.0, 0.4) * 1.5;
