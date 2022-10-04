@@ -68,8 +68,14 @@ function main() {
   gl.enable(gl.DEPTH_TEST);
 
   const flat = new ShaderProgram([
-    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
-    new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
+    new Shader(gl.VERTEX_SHADER, [require('./shaders/flat-vert.glsl')]),
+    new Shader(gl.FRAGMENT_SHADER, [
+      require('./shaders/toolbox.glsl'),
+      require('./shaders/noise.glsl'),
+      require('./shaders/sdf-objects.glsl'),
+      require('./shaders/sdf-compose.glsl'),
+      require('./shaders/flat-frag.glsl')
+    ]),
   ]);
 
   function processKeyPresses() {
