@@ -98,3 +98,4 @@ float pyramidSDF(vec3 q_position, vec3 position, float halfWidth, float halfDept
     return sqrt(min(min(d1, d2), d3)) * sign(max(max(s1, s2), s3));
 }
 
+
