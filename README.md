@@ -1,9 +1,6 @@
 # Project 2: SDFs
 
-<<<<<<< HEAD
-
-=======
->>>>>>> d878a1c41a2f3a01efcce7cba996e598e7b6070f
+Link to demo: https://mikolaslorant.github.io/hw02-landscape/
 * Added multioctave noise for the sky.
 * Added fog.
 * Added three lights.
