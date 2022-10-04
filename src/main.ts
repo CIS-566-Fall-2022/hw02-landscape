@@ -1,6 +1,6 @@
 import {vec2, vec3} from 'gl-matrix';
 // import * as Stats from 'stats-js';
-// import * as DAT from 'dat-gui';
+import * as DAT from 'dat.gui';
 import Icosphere from './geometry/Icosphere';
 import Square from './geometry/Square';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
@@ -12,18 +12,23 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
   tesselations: 5,
+  moveCamera: false,
   'Load Scene': loadScene, // A function pointer, essentially
 };
 
 let icosphere: Icosphere;
 let square: Square;
 let time: number = 0;
+let updateProperties = true;
 
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, 5);
   icosphere.create();
   square = new Square(vec3.fromValues(0, 0, 0), 8.0);
   square.create();
+
+  updateProperties = true;
+
   time = 0;
 }
 
@@ -50,7 +55,11 @@ function main() {
   // document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
-  // const gui = new DAT.GUI();
+  const gui = new DAT.GUI();
+  gui.add(controls, 'moveCamera').onChange((flag: boolean) => {
+    flat.controlCamera(flag);
+  });
+  gui.add(controls, 'Load Scene');
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -87,6 +96,11 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
+    
+    if (updateProperties) {
+      flat.controlCamera(false);
+      updateProperties = false;
+    }
 
     renderer.render(camera, flat, [
       square,

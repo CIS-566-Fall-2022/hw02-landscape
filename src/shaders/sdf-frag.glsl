@@ -3,6 +3,7 @@ precision highp float;
 
 uniform vec2 u_Dimensions;
 uniform float u_Time;
+uniform int u_ControlCamera;
 uniform vec3 u_Eye, u_Ref, u_Up;
 
 in vec4 fs_Nor;
@@ -27,13 +28,13 @@ const vec3 LIGHT_DIR = vec3(0.6, 1.0, 0.4) * 1.5;
 // High Dynamic Range
 #define SUN_KEY_LIGHT vec3(0.6, 1.0, 0.4) * 1.5
 // Fill light is sky color, fills in shadows to not be black
-#define SKY_FILL_LIGHT vec3(0.7, 0.2, 0.7) * 0.2
+#define SKY_FILL_LIGHT vec3(1.0,0.9,0.7) * 0.01
 // Faking global illumination by having sunlight
 // bounce horizontally only, at a lower intensity
 #define SUN_AMBIENT_LIGHT vec3(0.6, 1.0, 0.4) * 0.2
 
 const vec3 colors[6] = vec3[](vec3(99, 5, 0) / 255.0,         // MARRON
-                            vec3(128, 6, 4) / 255.0,        // RED
+                            vec3(22, 59, 102) / 255.0,        // RED
                             vec3(245, 96, 55) / 255.0,     // DARK ORANGE
                             vec3(255, 151, 56) / 255.0,     // ORANGE
                             vec3(249, 222, 81) / 255.0,     // YELLOW
@@ -50,6 +51,10 @@ float map2(float value, float min, float max){
 //=========================
 
 const float PI = 3.14159265359;
+
+float noise1D( vec2 p ) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
 
 float noise2D( vec2 p ) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -108,11 +113,11 @@ vec3 getColor(int ID, vec3 p)
   {
     case 0:
       // terrain
-      c = mix(colors[0], colors[3], smoothstep(0.4, 0.6, map(p.y, 0.0, 5.2, 0.0, 1.0)));
+      c = mix(colors[0], colors[4], smoothstep(0.41, 0.52, map(p.y, 0.0, 5.2, 0.0, 1.0)));
       break;
     case 1:
       // water
-      c = colors[1] + colors[2] * 0.02 * (sin((-p.x + p.z) * 100.2 + (u_Time * 0.8)));
+      c = colors[0] * vec3(0.099);
       break;
     default:
     c = vec3(1.0);
@@ -121,24 +126,20 @@ vec3 getColor(int ID, vec3 p)
   return c;
 }
 
-vec3 applyFog( in vec3  rgb,      // original color of the pixel
-               in float distance, // camera to point distance
-               in vec3  rayDir,   // camera to point vector
-               in vec3  sunDir )  // sun light direction
+vec3 applyFog(vec3  color, float distance, vec3 rayDir, vec3 sunDir)
 {
-    float fogAmount = 1.0 - exp( -distance * 0.3 );
-    float sunAmount = max( dot( rayDir, sunDir ), 0.0 );
-    vec3  fogColor  = mix( vec3(0.5,0.2,0.15)*1.2, vec3(1.1,0.6,0.45)*1.3,
-                           pow(sunAmount,8.0) );
-    return mix( rgb, fogColor, fogAmount );
+    float fogAmount = 1.0 - exp(-distance * 0.3);
+    float sunAmount = max(dot( rayDir, sunDir), 0.0);
+    vec3  fogColor  = mix(vec3(0.5, 0.2, 0.15) * 1.2, vec3(1.1, 0.6, 0.45) * 1.3, pow(sunAmount, 8.0));
+    return mix(color, fogColor, fogAmount);
 }
 
-vec3 scatter(vec3 ro, vec3 rd, vec3 lgt)
+vec3 scatter(vec3 rayOrigin, vec3 rayDirection, vec3 lightDirection)
 {   
-    float sd= max(dot(lgt, rd) * 0.5 + 0.5, 0.f);
-    float dtp = 13.f-(ro + rd * float(MAX_RAY_STEPS)).y * 3.5;
+    float sd= max(dot(lightDirection, rayDirection) * 0.5 + 0.5, 0.f);
+    float dtp = 13.f-(rayOrigin + rayDirection * float(MAX_RAY_STEPS)).y * 9.5;
     float hori = (map2(dtp, -1500.f, 0.0) - map2(dtp, 11.f, 500.f)) * 1.f;
-    hori *= pow(sd, 0.04);
+    hori *= pow(sd, 0.02);
     
     vec3 col = vec3(0);
     col += pow(hori, 200.f) * vec3(1.0, 0.7,  0.5) * 3.f;
@@ -146,6 +147,18 @@ vec3 scatter(vec3 ro, vec3 rd, vec3 lgt)
     col += pow(hori, 7.f) * vec3(1.0, 0.4, 0.25) * 0.8;
     
     return col;
+}
+
+vec3 stars(vec3 rayDir) {
+    float star = noise1D(vec2(rayDir.x, rayDir.y)) * 1.001;
+    vec3 starRadDir;
+    float newangle = 0.0;
+
+    if(floor(star) != 0.0) {      //there is a star here
+        return vec3(1, 1, 1);
+    }
+
+    return vec3(0.0);
 }
 
 //=========================
@@ -204,7 +217,7 @@ float terrianSDF(vec3 queryPos)
 
 float waterSDF(vec3 queryPos, float height)
 {
-  float noise = sin(queryPos.x * 1.2 * (u_Time / 200.0)) * 0.1;
+  float noise = sin(queryPos.x * 100.2 + (u_Time / 2.0)) * 0.01;
   height = queryPos.y - height - (noise * 0.2);
 
   return height;
@@ -216,11 +229,10 @@ const float waterHeight = 2.15;
 float sdfTerrainUnion(float t1, float t2, out int matID) {
   if (t1 < t2) {
     matID = 0;
-    return t1;
   } else {
     matID = 1;
-    return t2;
   }
+  return smoothUnion(t1, t2, 0.05);
 }
 
 float sceneSDF(vec3 queryPos, out int matID) 
@@ -243,18 +255,27 @@ float sceneSDF(vec3 queryPos)
 
 Ray getRay(vec2 uv) {
     Ray ray;
-    // vec3 EYE = u_Eye;
-    // vec3 REF = u_Ref;
+    vec3 _EYE = u_Eye;
+    vec3 _REF = u_Ref;
+
+    if (u_ControlCamera == 1) {
+      _EYE = u_Eye;
+      _REF = u_Ref;
+    }
+    else {
+      _EYE = EYE;
+      _REF = REF;
+    }
     
-    float len = tan(3.14159 * 0.125) * distance(EYE, REF);
-    vec3 H = normalize(cross(vec3(0.0, 1.0, 0.0), REF - EYE));
-    vec3 V = normalize(cross(H, EYE - REF));
+    float len = tan(3.14159 * 0.125) * distance(_EYE, _REF);
+    vec3 H = normalize(cross(vec3(0.0, 1.0, 0.0), _REF - _EYE));
+    vec3 V = normalize(cross(H, _EYE - _REF));
     V *= len;
     H *= len * u_Dimensions.x / u_Dimensions.y;
-    vec3 p = REF + uv.x * H + uv.y * V;
-    vec3 dir = normalize(p - EYE);
+    vec3 p = _REF + uv.x * H + uv.y * V;
+    vec3 dir = normalize(p - _EYE);
     
-    ray.origin = EYE;
+    ray.origin = _EYE;
     ray.direction = dir;
     return ray;
 }
@@ -299,14 +320,15 @@ vec3 estimateNormal(vec3 p) {
 vec3 getSceneColor(vec2 uv)
 {
     Intersection intersection = getRaymarchedIntersection(uv);
+    Ray ray = getRay(uv);
     
     DirectionalLight lights[3];
     vec3 backgroundColor = vec3(0.);
-    lights[0] = DirectionalLight(normalize(vec3(15.0, 15.0, 10.0)),
+    lights[0] = DirectionalLight(normalize(vec3(0.0, 13.0, -10.0)),
                                  SUN_KEY_LIGHT);
     lights[1] = DirectionalLight(vec3(0., 1., 0.),
                                  SKY_FILL_LIGHT);
-    lights[2] = DirectionalLight(normalize(-vec3(15.0, 0.0, 10.0)),
+    lights[2] = DirectionalLight(normalize(-vec3(0.0, 0.0, -10.0)),
                                  SUN_AMBIENT_LIGHT);
     backgroundColor = SUN_KEY_LIGHT;
     
@@ -328,10 +350,14 @@ vec3 getSceneColor(vec2 uv)
     }
     else
     {
+        vec3 horizon = scatter(ray.origin, ray.direction, lights[0].dir);
+        vec3 star = stars(vec3(sin(u_Time * 0.00005) * 0.00001, ray.direction.y, ray.direction.z));
+
         color = vec3(0.0);
+        color = star * (1.0 - clamp(dot(horizon, vec3(0.8)), 0.0, 1.0));
+        color += horizon * 0.7;
     }
-        color = applyFog(color, intersection.distance, getRay(uv).direction, lights[0].dir);
-        color += scatter(getRay(uv).origin, getRay(uv).direction, lights[0].dir);
+        color = applyFog(color, intersection.distance, ray.direction, lights[0].dir);
         return color;
 }
 
