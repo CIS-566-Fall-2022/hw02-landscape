@@ -2,9 +2,9 @@
 
 Live demo: https://adityagupta1.github.io/hw02-landscape/
 
-![image](https://user-images.githubusercontent.com/3106877/193335839-86f87e08-b42a-4c61-9491-abab0ef32645.png)
+![image](https://user-images.githubusercontent.com/3106877/193712311-f79ec403-6c23-4eaa-bdd9-d96591d71c97.png)
 
-I made a pretty straightforward scene with snow-capped mountains and water at a certain height. The camera slowly moves backwards to show more of the terrain (though the performance is pretty abysmal). There are also 2D noise-based clouds in the sky that cast shadows onto the terrain. For better performance, try making the window smaller.
+I made a scene with snow-capped mountains and water at a certain height. There are also green Mario-style pipes with rainbow spheres bouncing in and out. The camera slowly moves backwards to show more of the terrain (though the performance is pretty abysmal). There are also 2D noise-based clouds in the sky that cast shadows onto the terrain. For better performance, try making the window smaller.
 
 # Project 2: SDFs
 
