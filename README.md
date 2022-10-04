@@ -1,5 +1,6 @@
 # Project 2: SDFs
 
+https://yuz796.github.io/hw02-landscape/
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
