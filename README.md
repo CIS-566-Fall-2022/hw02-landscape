@@ -1,5 +1,24 @@
 # Project 2: SDFs
 
+## Results
+Live Demo: https://fridawang.github.io/hw02-landscape/
+
+![566-HW02-sdf](https://user-images.githubusercontent.com/33616958/193724462-df608559-04a8-4620-a44f-199082cdb722.gif)
+
+## Process
+I get the idea of create a scene of Journey from this shadertoy: https://www.shadertoy.com/view/ldlcRf. 
+I then find a in-game sceneshots as reference as below to start my work:
+
+<img width="619" alt="ref" src="https://user-images.githubusercontent.com/33616958/193725278-9bbc0db2-0dd9-4f74-9df7-6fbc1040b3b9.png">
+
+In my project, I reused some of the code (terrian and cloud) from shadertoy I mentioned above and then created temples, sand columns and characters by combining different sdf geometries. I also used smoothSubstract and smoothUnion to create some special shapes. 
+When creating the character, I use this picture as a reference:
+
+![sky_](https://user-images.githubusercontent.com/33616958/193725239-539334ce-d7c9-4b00-8bfb-1945f12ca856.jpg)
+It was actually from another mobile game Sky: Children of the Light. The reason I didn't try to build the original character in Journey is that it's too complex :(
+
+I also had my temples and characters cast shadows on the terrian (however, I think the shadow isn't 100% correct, some shadowed space looks unreasonable on the temples) and applied distance fog throughout the scene. (I added a clamp to my fogFactor so that the distant scenery wouldn't be a solid color).
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 

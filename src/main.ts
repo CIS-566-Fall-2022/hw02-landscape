@@ -61,17 +61,41 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 0));
+  const camera = new Camera(vec3.fromValues(0, 1, 0), vec3.fromValues(0, 0.5, 1));
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
+
+  // --------- load texture -----------
+  function loadTexture(url: string) {
+    const texture = gl.createTexture();
+  
+    const image = new Image();
+  
+    image.onload = function() {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+      gl.generateMipmap(gl.TEXTURE_2D);
+    };
+    image.src = url;
+  
+    return texture;
+  }
+
+  const surfaceTex = loadTexture('../texture/mountain.png');
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, surfaceTex);
+  // -----------------------------------
+
 
   const flat = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
   ]);
 
+  flat.setTexture(0);
+  
   function processKeyPresses() {
     // Use this if you wish
   }
