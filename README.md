@@ -4,6 +4,36 @@
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
 
+## Demo
+Live Demo: https://vivienldy.github.io/hw02-landscape/
+
+![Demo](result2.png)
+![Demo](result3.png)
+![Demo](result.gif)
+
+Mountain: I used 2D perlin noise to modified height of the mountain. And I change the scaler of the noise added base on the distance of the mountain.
+
+Tree: My first attemp was to create the canopy with several smooth union shperes, and it was super slow (although it's still slow now...) So, I simply changed the canopy to one shpere with noise added, and it looks okay. The tree trunk is just cone with sine function noise so it won't look too stiff.
+
+Road: Road is quad with sine function noise added. I played around with the frequency and offset to create a better winding road.
+
+Car: Union of several basic 3D shapes.
+
+Sun and Sky: Sun is a 2D circle SDF. And the gradient sky is colored base on the uv coordinate.
+
+Distance fog and Soft Shadow: I mix the fog color and scene color with the smoothstep distance. And I only cast shadow to the plain terrain.
+
+Reference: https://iquilezles.org/articles/distfunctions/ (Thank youuuu IQ!!)
+
+### Bloopers
+**BUMPING CAR**
+![Blooper1](blooper1.png)
+**TOO MUCH FOG**
+![Blooper1](blooper2.png)
+**MY FIRST CUTE SLOW TREE AND REFERENCE**
+![Blooper1](blooper3.jpg)
+
+
 ## Set up your raymarcher
 
 * Starting with the base code, create a ray marcher that can accurately render 3d shapes. We recommend testing with a sphere at the center of your canvas
