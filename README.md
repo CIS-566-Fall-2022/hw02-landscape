@@ -1,5 +1,7 @@
 # Project 2: SDFs
 
+![Live Demo](https://ess-aar.github.io/CIS5660-hw02-landscape)
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
