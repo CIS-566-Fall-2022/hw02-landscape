@@ -6,6 +6,7 @@ import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
 import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
+import Icosphere from './geometry/Icosphere';
 
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
@@ -15,11 +16,14 @@ const controls = {
 };
 
 let square: Square;
+let icosphere: Icosphere;
 let time: number = 0;
 
 function loadScene() {
   square = new Square(vec3.fromValues(0, 0, 0));
   square.create();
+  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1.0, 5.0);
+  icosphere .create();
   // time = 0;
 }
 
@@ -61,7 +65,7 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 0));
+  const camera = new Camera(vec3.fromValues(0, 0, 0), vec3.fromValues(0, 0, 0));
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
@@ -70,6 +74,16 @@ function main() {
   const flat = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
+  ]);
+
+  const sdfShader = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/sdf-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/sdf-frag.glsl')),
+  ]);
+
+  const lambert = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/lambert-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/lambert-frag.glsl')),
   ]);
 
   function processKeyPresses() {
@@ -83,8 +97,8 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
-    renderer.render(camera, flat, [
-      square,
+    renderer.render(camera, sdfShader, [
+        square,
     ], time);
     time++;
     // stats.end();
@@ -97,13 +111,13 @@ function main() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.setAspectRatio(window.innerWidth / window.innerHeight);
     camera.updateProjectionMatrix();
-    flat.setDimensions(window.innerWidth, window.innerHeight);
+    sdfShader.setDimensions(window.innerWidth, window.innerHeight);
   }, false);
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.setAspectRatio(window.innerWidth / window.innerHeight);
   camera.updateProjectionMatrix();
-  flat.setDimensions(window.innerWidth, window.innerHeight);
+  sdfShader.setDimensions(window.innerWidth, window.innerHeight);
 
   // Start the render loop
   tick();
