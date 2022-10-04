@@ -72,6 +72,11 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
   ]);
 
+  const sdf = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/sdf-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/sdf-frag.glsl')),
+  ]);
+
   function processKeyPresses() {
     // Use this if you wish
   }
@@ -83,7 +88,7 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
-    renderer.render(camera, flat, [
+    renderer.render(camera, sdf, [
       square,
     ], time);
     time++;
@@ -98,12 +103,14 @@ function main() {
     camera.setAspectRatio(window.innerWidth / window.innerHeight);
     camera.updateProjectionMatrix();
     flat.setDimensions(window.innerWidth, window.innerHeight);
+    sdf.setDimensions(window.innerWidth, window.innerHeight);
   }, false);
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.setAspectRatio(window.innerWidth / window.innerHeight);
   camera.updateProjectionMatrix();
   flat.setDimensions(window.innerWidth, window.innerHeight);
+  sdf.setDimensions(window.innerWidth, window.innerHeight);
 
   // Start the render loop
   tick();
