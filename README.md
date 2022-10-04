@@ -1,5 +1,61 @@
 # Project 2: SDFs
 
+![](img/mybridge4.PNG)
+
+For my SDF terrain project, I decided to try modeling the sunset landscape of Hyrule Field
+from the Nintendo game The Legend of Zelda: Twilight Princess. While not my favorite
+Zelda game, the artstyle of the near 20-year old game and its excessive use of bloom
+have always inspired me visually.
+
+Everything in the project is done without textures or meshes, all SDF and noise. This is
+also why it runs so slow, as the SDF calculations with noise based deformations cause it to
+chug a lot. I made some optimizations, like a bounding sphere check for the castle and
+seperating out the objects into seperate renderpasses, but it still is quite slow in
+full screen mode. For the multiple render passes, I simply had to make sure to enable alpha
+and blend, and then set alpha level of output of shader to 1.0 if it hit a surface, and 0.0
+if not. The one downside is this limits the amount of interaction between layers of the
+environment, the largest one being the water not obfuscating parts of the terrain when it deforms.
+
+The bridge, castle, and trees were hand sculpted using SDFs. I would have liked to have made them
+a lot more polished, but I did not have enough time. I utilized the destructive distorion
+that comes with too much noise in SDFs to get the broken look of the bridge.
+The trees sway a bit with the wind over time. 
+
+The sky and sun are also procedurally generated. I used mixtures of cosine color palettes 
+to achieve the warm orange glow with a fade to pinkish on the right, as well as the intensity
+of the sun.
+
+I used a mixture of three point lighting and distance fog to actually light the terrain.
+For the mountains, I also modified the alpha channel respective to distance to the sun to fake
+a sort of bloom effect of light shining through the mountains.
+
+The river is worley noise and trig-based water flow.
+
+I used the *bias*, *gain*, *smoothstep*, and *trig* toolbox functions.
+
+For reference, I used the areas' appearances in three
+versions: the original 2006 version, the Super Smash Bros. Brawl version from 2008, and the
+Super Smash Bros. Ultimate version from 2018.
+
+![](img/SSBB_Bridge_of_Eldin.PNG)
+
+*Super Smash Bros. Brawl (2008)* \
+*Nintendo*\
+*Courtesy of [Zelda Wiki](https://zelda.fandom.com/wiki/Bridge_of_Eldin)*
+
+![](img/tp_noclip.PNG)
+
+*The Legend of Zelda: Twilight Princess (2006)*\
+*Nintendo*\
+*Courtesy of [noclip](https://noclip.website/)*
+
+![](img/ssbu.jpg)
+
+*Super Smash Bros. Ultimate (2018)*\
+*Nintendo*\
+*Courtesy of [VGGTS World](https://www.vggts.gdn/where/ssbu/spiritsnaps/Spirit%20info%20-%20Midna2.jpg)*
+
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 

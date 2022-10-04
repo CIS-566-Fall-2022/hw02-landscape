@@ -1,6 +1,6 @@
 import {vec2, vec3} from 'gl-matrix';
-// import * as Stats from 'stats-js';
-// import * as DAT from 'dat-gui';
+const Stats = require('stats-js');
+import * as DAT from 'dat.gui';
 import Square from './geometry/Square';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
@@ -20,7 +20,7 @@ let time: number = 0;
 function loadScene() {
   square = new Square(vec3.fromValues(0, 0, 0));
   square.create();
-  // time = 0;
+  time = 0;
 }
 
 function main() {
@@ -38,15 +38,15 @@ function main() {
   }, false);
 
   // Initial display for framerate
-  // const stats = Stats();
-  // stats.setMode(0);
-  // stats.domElement.style.position = 'absolute';
-  // stats.domElement.style.left = '0px';
-  // stats.domElement.style.top = '0px';
-  // document.body.appendChild(stats.domElement);
+  const stats = Stats();
+  stats.setMode(0);
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.left = '0px';
+  stats.domElement.style.top = '0px';
+  document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
-  // const gui = new DAT.GUI();
+  const gui = new DAT.GUI({width: 350});
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -61,16 +61,48 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 0));
-
+  const camera = new Camera(vec3.fromValues(0, 20, -50), vec3.fromValues(0, 0, 60));
+  //const camera = new Camera(vec3.fromValues(75, 100, -200), vec3.fromValues(0, 0, 60));
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
 
-  const flat = new ShaderProgram([
+  const shader_water_and_background = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
-    new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/water_and_background-frag.glsl')),
   ]);
+
+  const shader_mountains = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/mountains-frag.glsl')),
+  ]);
+
+  const shader_castle = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/castle-frag.glsl')),
+  ]);
+
+  const shader_ridge = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/ridge-frag.glsl')),
+  ]);
+
+  const shader_right_hill = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/right_hill-frag.glsl')),
+  ]);
+
+  const shader_left_hill = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/left_hill-frag.glsl')),
+  ]);
+
+  const shader_bridge = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/bridge-frag.glsl')),
+  ]);
+
+
 
   function processKeyPresses() {
     // Use this if you wish
@@ -79,15 +111,78 @@ function main() {
   // This function will be called every frame
   function tick() {
     camera.update();
-    // stats.begin();
+     stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
     processKeyPresses();
-    renderer.render(camera, flat, [
+    renderer.render(camera, shader_water_and_background, [
       square,
     ], time);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+    // clear depth buffer so next passes write over
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    renderer.render(camera, shader_mountains, [
+      square,
+    ], time);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+
+    // clear depth buffer so next passes write over
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    renderer.render(camera, shader_castle, [
+      square,
+    ], time);
+
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+
+    // clear depth buffer so next passes write over
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    renderer.render(camera, shader_ridge, [
+      square,
+    ], time);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+
+    // clear depth buffer so next passes write over
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    renderer.render(camera, shader_right_hill, [
+      square,
+    ], time);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+
+    // clear depth buffer so next passes write over
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    renderer.render(camera, shader_left_hill, [
+      square,
+    ], time);
+
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
+
+    // clear depth buffer so next passes write over
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    renderer.render(camera, shader_bridge, [
+      square,
+    ], time);
+
     time++;
-    // stats.end();
+     stats.end();
 
     // Tell the browser to call `tick` again whenever it renders a new frame
     requestAnimationFrame(tick);
@@ -97,13 +192,25 @@ function main() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.setAspectRatio(window.innerWidth / window.innerHeight);
     camera.updateProjectionMatrix();
-    flat.setDimensions(window.innerWidth, window.innerHeight);
+    shader_water_and_background.setDimensions(window.innerWidth, window.innerHeight);
+    shader_mountains.setDimensions(window.innerWidth, window.innerHeight);
+    shader_ridge.setDimensions(window.innerWidth, window.innerHeight);
+    shader_right_hill.setDimensions(window.innerWidth, window.innerHeight);
+    shader_left_hill.setDimensions(window.innerWidth, window.innerHeight);
+    shader_bridge.setDimensions(window.innerWidth, window.innerHeight);
+    shader_castle.setDimensions(window.innerWidth, window.innerHeight);
   }, false);
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.setAspectRatio(window.innerWidth / window.innerHeight);
   camera.updateProjectionMatrix();
-  flat.setDimensions(window.innerWidth, window.innerHeight);
+  shader_water_and_background.setDimensions(window.innerWidth, window.innerHeight);
+  shader_mountains.setDimensions(window.innerWidth, window.innerHeight);
+  shader_ridge.setDimensions(window.innerWidth, window.innerHeight);
+  shader_right_hill.setDimensions(window.innerWidth, window.innerHeight);
+  shader_left_hill.setDimensions(window.innerWidth, window.innerHeight);
+  shader_bridge.setDimensions(window.innerWidth, window.innerHeight);
+  shader_castle.setDimensions(window.innerWidth, window.innerHeight);
 
   // Start the render loop
   tick();
