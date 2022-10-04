@@ -37,8 +37,7 @@ For reference, I used the areas' appearances in three
 versions: the original 2006 version, the Super Smash Bros. Brawl version from 2008, and the
 Super Smash Bros. Ultimate version from 2018.
 
-![](img/SSBB_Bridge_of_Eldin.PNG)
-
+![](img/SSBB_Bridge_of_Eldin.png)
 *Super Smash Bros. Brawl (2008)* \
 *Nintendo*\
 *Courtesy of [Zelda Wiki](https://zelda.fandom.com/wiki/Bridge_of_Eldin)*
