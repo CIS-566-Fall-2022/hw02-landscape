@@ -16,14 +16,11 @@ const controls = {
 };
 
 let square: Square;
-let icosphere: Icosphere;
 let time: number = 0;
 
 function loadScene() {
   square = new Square(vec3.fromValues(0, 0, 0));
   square.create();
-  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1.0, 5.0);
-  icosphere.create();
   // time = 0;
 }
 
@@ -65,7 +62,7 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 2.5, 10.0), vec3.fromValues(0, 2.5, 0));
+  const camera = new Camera(vec3.fromValues(0, 2.0, 120.0), vec3.fromValues(0, 1.0, 0.0));
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
@@ -97,6 +94,7 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
+
     renderer.render(camera, sdfShader, [
         square,
     ], time);

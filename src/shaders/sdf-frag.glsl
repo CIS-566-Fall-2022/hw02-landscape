@@ -10,8 +10,8 @@ out vec4 out_Col;
 
 //Constants:
 #define EPSILON 1e-2
-#define MAX_RAY_STEPS 256
-#define MAX_DISTANCE 1000.0
+#define MAX_RAY_STEPS 512
+#define MAX_DISTANCE 100.0
 
 
 //Structs:
@@ -35,7 +35,51 @@ struct Geom
 //1: 
 //...
 
+//Noise Functions:
+
+vec2 hash( vec2 p )
+{
+	p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
+	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+}
+
+//IQ
+float noise(vec2 p )
+{
+    const float K1 = 0.366025404; // (sqrt(3)-1)/2;
+    const float K2 = 0.211324865; // (3-sqrt(3))/6;
+
+	vec2  i = floor( p + (p.x+p.y)*K1 );
+    vec2  a = p - i + (i.x+i.y)*K2;
+    float m = step(a.y,a.x); 
+    vec2  o = vec2(m,1.0-m);
+    vec2  b = a - o + K2;
+	vec2  c = a - 1.0 + 2.0*K2;
+    vec3  h = max( 0.5-vec3(dot(a,a), dot(b,b), dot(c,c) ), 0.0 );
+	vec3  n = h*h*h*h*vec3( dot(a,hash(i+0.0)), dot(b,hash(i + o)), dot(c,hash(i+1.0)));
+    return dot( n, vec3(70.0) );
+}
+
+float fbm(vec2 p, int N_OCTAVES) {
+
+    float total = 0.f;
+    float frequency = 1.f;
+    float amplitude = 1.f;
+    float persistence = 0.5f;
+    float maxValue = 0.f;  // Used for normalizing result to 0.0 - 1.0
+
+    for(int i = 0; i < N_OCTAVES; i++) {
+        total += noise(frequency * p) * amplitude;
+        maxValue += amplitude;
+        amplitude *= persistence;
+        frequency *= 2.f;
+    }
+    return total/maxValue;
+    // return 1.f;
+}
+
 //SDF Functions:
+
 
 
 Geom union_Geom(Geom g1, Geom g2) {
@@ -46,6 +90,17 @@ Geom union_Geom(Geom g1, Geom g2) {
         return g2;
     }
 }
+
+Geom sdBox_Geom( vec3 p, vec3 b, vec3 pos, int id)
+{
+    Geom g;
+    p -= pos;
+    vec3 q = abs(p) - b;
+    g.distance = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+    g.material_id = id;
+    return g;
+}
+
 
 Geom sdRoundBox_Geom( vec3 p, vec3 b, vec3 pos, float r, int id)
 {
@@ -74,12 +129,48 @@ Geom planeSDF_Geom(vec3 queryPos, float height, int id)
 }
 
 Geom sceneSDF_Geom(vec3 queryPos) {
-    Geom sphere = sphereSDF_Geom(queryPos, vec3(0.0,2.5,0.0), 1.0, 0);
-    Geom plane = planeSDF_Geom(queryPos, 0.0, 1);
-    //( vec3 p, vec3 b, float r, int id)
-    Geom train = sdRoundBox_Geom(queryPos, vec3(10.f, 1.f, 0.5f), vec3(0.f, 0.0f, -80.f), 0.4f, 0);
+
+    // Geom train = sdBox_Geom(queryPos, vec3(35.0f, 1.f, 1.f), vec3(u_Ref.x, u_Ref.y - 0.1f, u_Ref.z + 10.f), 0);
+    //The train is 2 units away from us...
+
+    Geom plane;
+    // if (queryPos.z < 80.f) {
+    //     plane = planeSDF_Geom(queryPos, 0.0, 4);
+    // }
+    // else if (queryPos.z < 82.f) {
+    // if (queryPos.z < 70.f) {
+    //     // plane = planeSDF_Geom(queryPos, 0.9f * abs(sin(queryPos.x)), 1);
+    //     plane = planeSDF_Geom(queryPos, 1.0f, 1);
+    // } else if (queryPos.z < 90.f) {
+    //     float hT = mix(1.f, 0.f, (queryPos.z - 85.f)/5.f);
+    //     plane = planeSDF_Geom(queryPos, hT, 1);
+    // } else {
+    //     plane = planeSDF_Geom(queryPos, 0.0, 4);
+    // }
+
+    if (queryPos.z < 80.f) {
+        plane = planeSDF_Geom(queryPos, sin(queryPos.z - 80.f), 1);
+    } else {
+        plane = planeSDF_Geom(queryPos, 0.f, 1);
+    }
+    // plane = planeSDF_Geom(queryPos, sin(queryPos.z), 1);
+    // }
+    // } else if (queryPos.z < 84.f) { //
+    //     plane = planeSDF_Geom(queryPos, 0.0, 2);
+    //     //Generate a lookup table for the plane's noise ...
+    // } else if (queryPos.z < 90.f){
+    //     plane = planeSDF_Geom(queryPos, 0.0, 3);
+    // } else {
+    //     plane = planeSDF_Geom(queryPos, 0.0, 5);
+    // }
+
+    // if (queryPos.x < 0.f) {
+    //     plane = planeSDF_Geom(queryPos, 0.0, 4);
+    // }
+    
     // return sphere;
-    return union_Geom(train, plane);
+    // return union_Geom(train, plane);
+    return plane;
 }
 
 float sceneSDF(vec3 queryPos) {
@@ -99,11 +190,11 @@ vec3 getRay(vec2 uv) {
 }
 
 vec3 estimateNormal(vec3 p) {
-    return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
-        sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
-    ));
+  return normalize(vec3(
+    sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
+    sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
+    sceneSDF(vec3(p.x, p.y, p.z + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
+  ));
 }
 
 //Ray Marching
@@ -141,17 +232,28 @@ vec3 getSceneColor(vec2 uv) {
     //2. Choose color based on distance value (but also, in future, we can categorize by material too...)
     vec3 color;
     if (isect.t > 0.0) {
-        // vec3 N = estimateNormal(isect.position);
-        // color = N;
-        if (isect.material_id == 0) {
+        // if (isect.material_id == 0) {
+        //     color = vec3(1.);
+        // } else if (isect.material_id == 1) {
+        //     color = vec3(0.2);
+        // } else if (isect.material_id == 2) {
+        //     color = vec3(0.4);
+        // } else if (isect.material_id == 3) {
+        //     color = vec3(0.5);
+        // } else if (isect.material_id == 4) {
+            // color = vec3(0.1);
+        // }else {
             vec3 N = estimateNormal(isect.position);
             color = N;
-        } else {
-            color = vec3(1.);
-        }
+        // }
     } else {
-        color = vec3(0.2, 0.2, 0.4);
+        color = vec3(0.67, 0.81, 0.88);
     }
+
+    vec3 backgroundColor = vec3(0.67, 0.81, 0.88);
+    // float fogT = smoothstep(10.0, 35.0, distance(isect.position, u_Eye));
+    // color = mix(color.rgb, backgroundColor, fogT);
+    // color = pow(color.rgb, vec3(1.0, 1.2, 1.5));
     return color;
 }
 
