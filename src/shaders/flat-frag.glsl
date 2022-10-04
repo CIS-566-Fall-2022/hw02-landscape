@@ -29,16 +29,16 @@ const float _ZenithFallOff = 2.36000 ;
 const RGB _Nadir = RGB(1, 0.93103, 0) ;
 const float _NadirFallOff = 1.91000 ;
 const RGB _Horizon = RGB(0.96324, 0.80163, 0.38954) ;
-const RGB _CharacterMainColor = RGB(0.60294, 0.1515, 0.062067) ;
+const RGB _CharacterMainColor = RGB(0.15294, 0.0375, 0.016067) ;
 const RGB _CharacterTerrainCol = RGB(0.35294, 0.16016, 0.12197) ;
-const RGB _CharacterCloakDarkColor = RGB(0.25735, 0.028557, 0.0056769) ;
+const RGB _CharacterCloakDarkColor = RGB(0.40735, 0.040557, 0.0086769) ;
 const RGB _CharacterYellowColor = RGB(0.88971, 0.34975, 0) ;
 const RGB _CharacterWhiteColor = RGB(0.9928, 1, 0.47794) ;
 const float _CharacterBloomScale = 0.70000 ;
 const float _CharacterDiffScale = 1.50000 ;
 const float _CharacterFreScale = 1.77000 ;
 const float _CharacterFrePower = 3.84000 ;
-const float _CharacterFogScale = 4.55000 ;
+const float _CharacterFogScale = 8.55000 ;
 const float _CloudTransparencyMul = 0.90000 ;
 const RGB _CloudCol = RGB(1, 0.84926, 0.69853) ;
 const RGB _BackCloudCol = RGB(0.66176, 0.64807, 0.62284) ;
@@ -73,11 +73,7 @@ const float _FlyingHelperBloomScale = 2.61000 ;
 const float _FlyingHelperFrePower = 1.00000 ;
 const float _FlyingHelperFreScale = 0.85000 ;
 const float _FlyingHelperFogScale = 1.75000 ;
-// ============================================================
-
-//==========================================================================================
-// Play with these at your own risk. Expect, unexpected results!
-//==========================================================================================
+// =========================================================
 
 const mat4 _CameraInvViewMatrix = mat4( 1, 0, 0, 1.04, 
 0, 0.9684963, 0.2490279, 2.2, 
@@ -96,47 +92,13 @@ const float _TempleRotation = 0.17000 ;
 const vec3 _TemplePosition = vec3(0.52, 2.35, 17.6) ;
 const vec3 _TempleScale = vec3(0.4, 0.53, 0.38) ;
 
-
 const vec3 _SunPosition = vec3(-30.3, 60, -40.1) ;
-const float _CharacterRotation = 0.17000 ;
+const float _CharacterRotation = - 0.17000 ;
 const vec3 _CharacterPosition = vec3(0.52, 2.35, 17.6) ;
 const vec3 _CharacterScale = vec3(0.4, 0.53, 0.38) ;
-const float _MainClothRotation = 0.30000 ;
-const vec3 _MainClothScale = vec3(0.3, 0.68, 0.31) ;
-const vec3 _MainClothPosition = vec3(0, -0.12, 0) ;
-const vec3 _MainClothBotCutPos = vec3(0, -0.52, 0) ;
-const vec3 _MainClothDetail = vec3(6, 0.04, 1.3) ;
-const float _HeadScarfRotation = -0.19000 ;
-const vec3 _HeadScarfPosition = vec3(-0.005, -0.16, -0.01) ;
-const vec3 _HeadScarfScale = vec3(0.18, 0.2, 0.03) ;
-const float _HeadRotationX = -0.30000 ;
-const float _HeadRotationY = 0.29000 ;
-const float _HeadRotationZ = 0.00000 ;
-const vec3 _HeadPos = vec3(0, -0.04, 0.01) ;
-const vec3 _LongScarfPos = vec3(0.01, -0.15, 0.09) ;
-const vec3 _LongScarfScale = vec3(0.05, 1.25, 0.001) ;
-const vec4 _LongScarfWindStrength = vec4(0.3, 4.52, 5.2, 0.02) ;
-const float _LongScarfRotX = 1.43000 ;
-const float _LongScarfMaxRad = 1.99000 ;
-const vec3 _FacePosition = vec3(0, -0.01, 0.05) ;
-const vec3 _FaceSize = vec3(0.038, 0.05, 0.03) ;
-const vec3 _UpperLeftLegA = vec3(-0.02, -0.37, 0.01) ;
-const vec3 _UpperLeftLegB = vec3(-0.02, -0.67, -0.059999) ;
-const vec3 _UpperLeftLegParams = vec3(0.026, 1, 1) ;
-const vec3 _LowerLeftLegA = vec3(-0.02, -0.67, -0.059999) ;
-const vec3 _LowerLeftLegB = vec3(-0.02, -0.77, 0.12) ;
-const vec3 _LowerLeftLegParams = vec3(0.028, 0.03, 0.01) ;
-const vec3 _UpperRightLegA = vec3(0.07, -0.5, 0.02) ;
-const vec3 _UpperRightLegB = vec3(0.07, -0.61, 0.09) ;
-const vec3 _UpperRightLegParams = vec3(0.026, 1, 1) ;
-const vec3 _LowerRightLegA = vec3(0.07, -0.61, 0.09) ;
-const vec3 _LowerRightLegB = vec3(0.07, -0.91, 0.22) ;
-const vec3 _LowerRightLegParams = vec3(0.028, 0.03, 0.01) ;
-const vec3 _BodyPos = vec3(0, -0.45, -0.03) ;
-const vec3 _CharacterTrailOffset = vec3(0.72, 0.01, 0.06) ;
-const vec3 _CharacterTrailScale = vec3(0.001, 0, 0.5) ;
-const vec3 _CharacterTrailWave = vec3(1.97, 0, 0.34) ;
 const vec2 _CharacterHeightTerrainMix = vec2(1.95, -30) ;
+const vec3 _CharacterAOParams = vec3(0.03, 7.36, 0) ;
+
 const vec3 _CloudNoiseStrength = vec3(0.2, 0.16, 0.1) ;
 const vec3 _FrontCloudsPos = vec3(9.91, 8.6, -15.00) ;
 const vec3 _FrontCloudsOffsetA = vec3(-9.1, 3.04, 0) ;
@@ -154,19 +116,7 @@ const vec3 _CloudBackGlobalParams = vec3(0.16, 1.4, -0.01) ;
 const vec3 _CloudNormalMod = vec3(0.26, -0.13, 1.22) ;
 const float _CloudSpecPower = 24.04000 ;
 const float _CloudPyramidDistance = 0.14500 ;
-const vec3 _TombPosition = vec3(5, 5, 9.28) ;
-const vec3 _TombScale = vec3(0.07, 0.5, 0.006) ;
-const vec3 _TombBevelParams = vec3(0.44, 0.66, 0.01) ;
-const float _TombRepScale = 0.79000 ;
-const vec3 _TombCutOutScale = vec3(0.39, 0.06, -14.92) ;
-const vec3 _TombScarfOffset = vec3(0, 0.46, 0) ;
-const vec3 _TombScarfWindParams = vec3(-1.61, 6, 0.05) ;
-const vec3 _TombScarfScale = vec3(0.03, 0.002, 0.5) ;
-const float _TombScarfRot = -0.88000 ;
-const mat4 _TombScarfMat = mat4( 0.9362437, 0, -0.3513514, 0, 
-0, 1, 0, 0, 
-0.3513514, 0, 0.9362437, 0, 
-0, 0, 0, 1 ) ;
+
 const vec3 _PyramidPos = vec3(-18.0, 10.9, -50) ;
 const vec3 _PyramidScale = vec3(41.1, 24.9, 18) ;
 const vec3 _PrismScale = vec3(1, 1.9, 1) ;
@@ -175,24 +125,15 @@ const vec3 _PrismEyeScale = vec3(0.7, 1.9, 51.5) ;
 const vec3 _PyramidEyeOffset = vec3(2.0, -4.9, 0) ;
 const float _PrismEyeWidth = 5.86000 ;
 const float _TerrainMaxDistance = 28.04000 ;
+
 const float _SmallDetailStrength = 0.00600 ;
 const vec3 _SmallWaveDetail = vec3(3.19, 16, 6.05) ;
 const vec2 _WindSpeed = vec2(2, 0.6) ;
-const float _MediumDetailStrength = 0.05000 ;
-const vec2 _MediumWaveDetail = vec2(2, 50) ;
-const vec3 _MediumWaveOffset = vec3(0.3, -2, 0.1) ;
 const vec2 _LargeWaveDetail = vec2(0.25, 0.73) ;
 const vec3 _LargeWavePowStre = vec3(0.6, 2.96, -2.08) ;
 const vec3 _LargeWaveOffset = vec3(-3.9, 4.41, -11.64) ;
 const vec3 _FlyingHelperPos = vec3(2.15, 4.68, 14.4) ;
-const vec3 _FlyingHelperScale = vec3(0.25, 0.001, 0.3) ;
-const vec3 _FlyingHelperMovement = vec3(0.44, 1.44, -2.98) ;
-const vec3 _FlyingHelperScarfScale = vec3(0.1, 0.001, 1.5) ;
-const vec3 _FlyingHelperScarfWindParams = vec3(-0.06, 0.31, 0.47) ;
-const vec3 _FlyingHelperScarfWindDetailParams = vec3(3.93, 0.005, -45.32) ;
-const vec3 _FlyingHelperSideScarfOffset = vec3(0.16, -0.01, 0) ;
-const vec3 _FlyingHelperSideScarfScale = vec3(0.06, 0.001, 0.8) ;
-const vec4 _FlyingScarfSideWindParams = vec4(2.46, -1.59, -0.05, 0.21) ;
+
 
 // Material ID definitions
 #define MAT_PYRAMID 1.0
@@ -218,13 +159,8 @@ const vec4 _FlyingScarfSideWindParams = vec4(2.46, -1.59, -0.05, 0.21) ;
 #define TEST_MAT_GREATER( a, b ) a > (b - 0.1)
 
 //==========================================================================================
-// Primitive functions by IQ
+// SDF by IQ： https://iquilezles.org/articles/distfunctions/
 //==========================================================================================
-float sdRoundBox(vec3 p, vec3 b, float r)
-{
-	return length( max( abs(p) - b, 0.0) ) - r;
-}
-
 float sdSphere(vec3 p, float s)
 {
 	return length(p) - s;
@@ -281,18 +217,6 @@ float sdPlane(vec3 p, vec4 n)
 {
 	// n must be normalized
 	return dot(p, n.xyz) + n.w;
-}
-
-vec2 sdSegment( in vec3 p, vec3 a, vec3 b )
-{
-	vec3 pa = p - a, ba = b - a;
-	float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
-	return vec2( length( pa - ba*h ), h );
-}
-
-float sdEllipsoid(in vec3 p, in vec3 r)
-{
-	return (length(p / r) - 1.0) * min(min(r.x, r.y), r.z);
 }
 
 float sdTriPrism( vec3 p, vec2 h )
@@ -466,7 +390,7 @@ void Bend(inout vec3 vPos, vec2 vWind, float fBendScale)
 }
 
 //==========================================================================================
-// The big mountain in the distance. Again, not a pyramid
+// The big mountain in the background. Reference: https://www.shadertoy.com/view/ldlcRf
 //==========================================================================================
 float sdBigMountain( in vec3 pos )
 {
@@ -493,7 +417,7 @@ float sdBigMountain( in vec3 pos )
 }
 
 //==========================================================================================
-// Main desert shape
+// Main desert shape. Reference：https://www.shadertoy.com/view/ldlcRf
 //==========================================================================================
 float sdLargeWaves( in vec3 pos )
 {
@@ -551,39 +475,13 @@ vec2 sdDesert( in vec3 pos, in float terrain )
 //==========================================================================================
 // Character
 //==========================================================================================
-float sdCharacter(vec3 pos)
-{
-  pos -= vec3(-0.1, -0.4, -0.5);
-  float res = 10000000.0;
-  float head = sdSphere(pos + vec3(0.0, -0.05, 0.0), 0.1);
-  res = min(res, head);
-  float hairL = sdSphere(pos + vec3(-0.11, -0.1, -0.05), 0.06);
-  res = min(res, hairL);
-  float hairR = sdSphere(pos + vec3(0.11, -0.1, -0.05), 0.06);
-  res = min(res, hairR);
-
-  float cloak = sdCone(pos, vec2(0.9, 0.5), 0.2);
-  
-  res = smoothUnion(res, cloak, 0.01);
-
-  float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.15, 0.1));
-  res = min(res, body);
-
-  float leftLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.0), 0.1, 0.03);
-    float rightLeg = sdVerticalCapsule(pos + vec3(0.08, 0.4, 0.0), 0.1, 0.03);
-  float dt2 = min(leftLeg, rightLeg);
-
-  res = min(res,dt2);
-  return res;
-}
-
 vec2 sdCharacter1(vec3 pos)
 {
-  pos -= _TemplePosition;
-  vec3 scale = _TempleScale;
+  pos -= _CharacterPosition;
+  vec3 scale = _CharacterScale;
   float scaleMul = min(scale.x, min(scale.y, scale.z));
 
-  rY(pos, - _TempleRotation);
+  rY(pos, _CharacterRotation);
   pos /= scale;
   pos -= vec3(4.1, 0.0, -1.5);
 
@@ -613,16 +511,15 @@ vec2 sdCharacter1(vec3 pos)
   hairMat = min_mat(headMat, hairMat);
 
   float cloak = sdCone(pos, vec2(0.9, 0.5), 0.2);
-  //clock = smoothUnion(head, cloak, 0.01);
   vec2 clockMat = vec2(cloak, MAT_CHARACTER_MAIN_CLOAK);
   clockMat = min_mat(hairMat, clockMat);
 
-  float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.15, 0.1));
+  float body = sdCylinder(pos + vec3(0.0, 0.2, 0.0), vec2(0.14, 0.1));
   vec2 bodyMat = vec2(body, MAT_CHARACTER_DRESS);
   bodyMat = min_mat(clockMat, bodyMat);
 
-  float leftLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.0), 0.1, 0.03);
-  float rightLeg = sdVerticalCapsule(pos + vec3(0.08, 0.4, 0.0), 0.1, 0.03);
+  float rightLeg = sdVerticalCapsule(pos + vec3(-0.08, 0.4, 0.04), 0.1, 0.03);
+  float leftLeg = sdVerticalCapsule(pos + vec3(0.08, 0.4, -0.04), 0.1, 0.03);
   float legs = min(leftLeg, rightLeg);
   vec2 legsMat = vec2(legs, MAT_CHARACTER_BASE);
   
@@ -778,27 +675,19 @@ vec2 sdTemples (vec3 pos) {
   rY(pos, _TempleRotation);
   pos /= scale;
 
-
   float frontTemple = sdFrontTemple(pos);
-  //float character = sdCharacter(pos);
-
   res = min(res, frontTemple);
-  //res = min(res, character);
 
   pos *= scale;
   rY(pos, -_TempleRotation * 3.0);
   pos /= scale;
 
   float temple2 = sdBackRightTemple(pos - vec3(7.4, 0.0, 0.0));
-
   res = min(res, temple2);
 
   vec2  templeMat = vec2(res, 11 );
-
   vec2  templesMat = templeMat; 
-
   templesMat.x *= scaleMul;
-
 
   return templesMat;
 }
@@ -812,7 +701,6 @@ float sdCloud( in vec3 pos, vec3 cloudPos, float rad, float spread, float phaseO
 	pos += pn( pos ) * _CloudNoiseStrength;
 	pos = pos - cloudPos;
 
-	// Make us 2d-ish - My artists have confirmed me: 2D is COOL!
 	pos.z /= globalParams.x;
 
 	// Repeat the space
@@ -858,9 +746,6 @@ vec2 sdClouds( in vec3 pos )
 //==========================================================================================
 vec2 map( in vec3 pos )
 {
-  // vec2 temple = sdTemples(pos);
-  // vec2 character = sdCharacter1(pos);
-	// vec2 res = min_mat(temple, character); 
   vec2 character = sdCharacter1(pos);
 	vec2 res = character;
   
@@ -879,7 +764,6 @@ vec2 map( in vec3 pos )
 
       vec2 clouds	   = sdClouds(pos);
       res = min_mat( res, clouds );
-      
     }
   }
   return res;
@@ -930,8 +814,26 @@ vec3 calcNormal( in vec3 pos )
 					  e.yxy*mapSimple( pos + e.yxy ).x + 
 					  e.xxx*mapSimple( pos + e.xxx ).x );
 }
+
+
 //==========================================================================================
-// Only character, flying helpers and tombs cast shadows. Only terrain recieves shadows
+// Ambient Occlusion, only applied to the Traveller
+//==========================================================================================
+float AmbientOcclusion(vec3 p, vec3 N, float stepSize, float k)
+{
+    float r = 0.0;
+    float t = 0.0;
+  
+    for(int i = 0; i < 2; i++)
+    {
+        t += stepSize;
+        r += (1.0 / pow(2.0, t)) * (t - sdCharacter1(p + (N * t)).x);
+    }
+    return max(0.0, 1.0 - (k * r));
+}
+
+//==========================================================================================
+// Only temples and character cast shadows. Only terrain recieves shadows
 //==========================================================================================
 float softShadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k )
 {
@@ -1005,10 +907,6 @@ vec3 render( in vec3 ro, in vec3 rd )
 	vec3 skyCol = sky( ro, rd );
 	vec3 col	= skyCol;
 
-	#if defined (DEBUG_PERFORMANCE)
-	return (res.z);
-	#endif
-
 	float t = res.x;
 	float m = res.y;
 
@@ -1032,14 +930,11 @@ vec3 render( in vec3 ro, in vec3 rd )
 			float smoothCloudBloom = 1.0 - smoothstep( 0.8, 1.0, leftSideCloudDist / 40.0);
 			return col + res.z * res.z * 0.2 * smoothCloudBloom;
 		}
-        else
+    else
 			return col;
 	}
 
-	float skyFog = 1.0-exp( _FogMul * t * pow(pos.y, _FogPow) );
-	#if defined (DEBUG_FOG)
-	return (skyFog);
-	#endif
+	float skyFog = 1.0 - exp( _FogMul * t * pow(pos.y, _FogPow) );
 
 	// Render the big mountain. Keep track of it's color, so we can use it for transparency for clouds later
 	vec3 pyramidCol = vec3(0.0, 0.0, 0.0);
@@ -1119,15 +1014,6 @@ vec3 render( in vec3 ro, in vec3 rd )
 		return mix( inCloudCol , skyCol, skyFog * _CloudFogStrength );    
 	}
 
-	// Tombs
-	if( TEST_MAT_LESS(m, MAT_TOMB_SCARF ) )
-	{
-		// Simple strong diffuse
-		float diff	= clamp(dot(nor,_LightDir) + 1.0, 0.0, 1.0);
-		vec3 col	= mix( _TombMainColor, _TombScarfColor * 2.0, m - MAT_TOMB );
-		return mix( diff * col, skyCol, skyFog);
-	}
-
   // Character
 	if( TEST_MAT_GREATER (m, MAT_CHARACTER_BASE ) )
 	{
@@ -1152,22 +1038,18 @@ vec3 render( in vec3 ro, in vec3 rd )
     else if( TEST_MAT_LESS( m,MAT_CHARACTER_MAIN_CLOAK) )
     {
       col = _CharacterCloakDarkColor;
-      return col;
     }
     else if( TEST_MAT_LESS( m,MAT_CHARACTER_HAIR)) 
     {
       col = vec3(1.0, 1.0, 1.0);
-      return col;
     }
     else if( TEST_MAT_LESS( m,MAT_CHARACTER_DRESS)) 
     {
-      col = _CharacterMainColor;
-      return col;
+      col = vec3(1.0, 0.9, 0.6);
     }
-    else {
-      col = _CharacterMainColor;
-      return col;
-    }
+    
+    //float ao = AmbientOcclusion(pos - (rd * 0.01), nor, _CharacterAOParams.x, _CharacterAOParams.y); 
+		return mix( (fres + diff) * col, skyCol, skyFog * _CharacterFogScale );
   }
 	return vec3( clamp(col * 0.0,0.0,1.0) );
 }
@@ -1187,17 +1069,17 @@ float noise(float p)
 }
 
 float distanceFog(float d) {
-    float fog_maxdist = 50.f;
-    float fog_mindist = 18.f;
+    float fog_maxdist = 30.f;
+    float fog_mindist = 14.f;
     if (d > fog_maxdist) {
-        return 1.f;
+        return 0.5f;
     }
     else if (d < fog_mindist) {
         return 0.f;
     }
     else {
         float fog_factor = 1.0 - (fog_maxdist - d) / (fog_maxdist - fog_mindist);
-        return fog_factor;
+        return fog_factor > 0.5? 0.5 : fog_factor;
     }
     return 0.f;
 }
@@ -1237,12 +1119,11 @@ void main() {
 	col *= vig;
 
 	// Distance Fog
-	float d = distance(isect, u_Eye);
-    float fogFactor = distanceFog(d);
+	float d = distance(isect.yz, vec2(0, 6));
+  float fogFactor = distanceFog(d);
 
 	vec4 tmpColor = vec4(col.xyz,1);
 	tmpColor = mix(tmpColor, vec4(RGB(1, 0.96926, 0.84853),1.0), fogFactor);
 	// Final color
-	out_Col =  vec4(col.xyz,1);
-  //out_Col = vec4(0.5 * (fs_Pos + vec2(1.0)), 0.5 * (sin(u_Time * 3.14159 * 0.01) + 1.0), 1.0);
+	out_Col =  tmpColor;
 }
