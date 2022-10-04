@@ -249,8 +249,27 @@ WorleyInfo worley(vec3 p, float t) {
 // SDF OPERATIONS
 // =================================
 
+struct Terrain {
+  float dist;
+  int material;
+};
+
 float sdfUnion(float d1, float d2) {
   return min(d1, d2);
+}
+
+Terrain sdfTerrainUnion(Terrain t1, Terrain t2) {
+  Terrain t;
+
+  if (t1.dist < t2.dist) {
+    t.dist = t1.dist;
+    t.material = t1.material;
+  } else {
+    t.dist = t2.dist;
+    t.material = t2.material;
+  }
+
+  return t;
 }
 
 float sdfIntersect(float d1, float d2) {
@@ -297,30 +316,84 @@ float capsuleSDF(vec3 pos, vec3 a, vec3 b, float r) {
   return length(pa - ba * h) - r;
 }
 
+float cylinderSDF(vec3 pos, vec3 base, float h, float r) {
+  pos -= base;
+  vec2 d = abs(vec2(pos.y, length(pos.xz))) - vec2(h, r);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+float infiniteCylinderSDF(vec3 pos, vec3 center, float r) {
+  pos -= center;
+  return distance(pos.xz, center.xz) - r;
+}
+
 // =================================
 // SCENE
 // =================================
 
+const float pipeBaseY = -60.0;
+const float pipeMinHeight = 36.0;
+const float pipeMaxHeight = 54.0;
+
+float pipeSDF(vec3 pos, float height) {
+  float pipe = cylinderSDF(pos, vec3(0, pipeBaseY, 0), height, 2.0);
+  float pipeTop = cylinderSDF(pos, vec3(0, pipeBaseY + height, 0), 1.0, 2.5);
+  float pipeSubtraction = infiniteCylinderSDF(pos, vec3(0, 0, 0), 1.8);
+  return sdfSubtract(sdfUnion(pipe, pipeTop), pipeSubtraction) - 0.1;
+}
+
+const int pipeGridSize = 50;
+const float pipeMaxDisplacement = 20.0;
+
+Terrain pipeCellSDF(vec3 pos, ivec3 gridPos) {
+  vec3 fractPos = pos - vec3(gridPos) - vec3(pipeGridSize, 0, pipeGridSize) / 2.0;
+
+  vec3 rand = random3(vec3(gridPos));
+  float pipeHeight = mix(pipeMinHeight, pipeMaxHeight, rand.x);
+  vec3 pipeDisplacement = ((vec3(rand.y, 0, rand.z) * 2.0) - 1.0) * pipeMaxDisplacement;
+  pipeDisplacement.y = 0.0;
+  Terrain pipeTerrain = Terrain(pipeSDF(fractPos + pipeDisplacement, pipeHeight), 3);
+
+  vec2 rand2 = random2(rand.xy) * vec2(50.0, 4.0) + vec2(0.0, 4.0);
+  float sphereHeight = pipeHeight + pipeBaseY + 28.0;
+  sphereHeight -= (pow(mod(u_Time / rand2.y + rand2.x, 5.0) - 2.5, 2.0) + 5.0) * 3.0;
+  vec3 sphereCenter = -pipeDisplacement;
+  sphereCenter.y = sphereHeight;
+  Terrain sphereTerrain = Terrain(sphereSDF(fractPos, sphereCenter, 1.5), 4);
+
+  return sdfTerrainUnion(pipeTerrain, sphereTerrain);
+}
+
+Terrain pipeGridSDF(vec3 pos) {
+  ivec3 gridPos = pipeGridSize * ivec3(floor(pos / float(pipeGridSize)));
+  gridPos.y = 0;
+
+  Terrain minTerrain = Terrain(1e20, -1);
+  for (int dx = -1; dx <= 1; ++dx) {
+    for (int dz = -1; dz <= 1; ++dz) {
+      Terrain pipeTerrain = pipeCellSDF(pos, gridPos + pipeGridSize * ivec3(dx, 0, dz));
+      if (pipeTerrain.dist < minTerrain.dist) {
+        minTerrain = pipeTerrain;
+      }
+    }
+  }
+
+  return minTerrain;
+}
+
 const float terrainOffset = -90.0;
 const float terrainAmplitude = 100.0;
-const float terrainMaxHeight = terrainOffset + terrainAmplitude;
 const float waterHeight = -48.0;
-
-struct Terrain {
-  float dist;
-  int material;
-};
 
 Terrain sceneSDF(vec3 pos) {
   float mountainsNoise = fbmRotate(pos.xz * 0.02, 8);
   float mountainsSDF = planeSDF(pos, terrainOffset + mountainsNoise * terrainAmplitude);
   float waterSDF = planeSDF(pos, waterHeight);
+  Terrain baseTerrain = sdfTerrainUnion(Terrain(mountainsSDF, 1), Terrain(waterSDF, 2));
 
-  if (mountainsSDF < waterSDF) {
-    return Terrain(mountainsSDF, 1);
-  } else {
-    return Terrain(waterSDF, 2);
-  }
+  Terrain pipeTerrain = pipeGridSDF(pos);
+
+  return sdfTerrainUnion(baseTerrain, pipeTerrain);
 }
 
 // =================================
@@ -362,10 +435,6 @@ Intersection rayMarch(vec3 dir) {
 
     currentPos += dir * distToSurface;
     t += distToSurface;
-
-    if (currentPos.y > terrainMaxHeight && dir.y > 0.0) {
-      break;
-    }
   }
 
   intersection.t = -1.0;
@@ -403,7 +472,7 @@ float softShadow(vec3 p) {
 
   float result = 1.0;
   float prevH = 1e20;
-  while (currentPos.y < terrainMaxHeight) {
+  while (currentPos.y < 200.0) { // large enough value to cover any terrain
     float h = sceneSDF(currentPos).dist;
     if (h < EPSILON) {
       return 0.0;
@@ -441,21 +510,37 @@ const vec3 rockColor1 = vec3(145.0) / 255.0 * 0.4;
 const vec3 rockColor2 = vec3(89.0, 96.0, 97.0) / 255.0;
 const vec3 snowColor = vec3(219.0, 241.0, 253.0) / 255.0;
 
+const vec3 pipeColor = vec3(44.0, 176.0, 26.0) / 255.0;
+
 vec3 getTerrainColor(vec3 pos, vec3 nor, int material) {
   vec3 finalColor;
 
-  if (material == 1) {
-    float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5, 4);
-    rockNoise = smoothstep(0.3, 0.7, rockNoise);
-    rockNoise = gain(0.9, rockNoise);
-    vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
+  switch (material) {
+    case 1:
+      float rockNoise = fbm(pos / 5.0 + perlin(pos) * 0.5, 4);
+      rockNoise = smoothstep(0.3, 0.7, rockNoise);
+      rockNoise = gain(0.9, rockNoise);
+      vec3 rockColor = mix(rockColor1, rockColor2, rockNoise);
 
-    float snowSlopeFactor = smoothstep(0.83, 0.75, dot(nor, vec3(0, 1, 0)));
+      float snowSlopeFactor = smoothstep(0.83, 0.75, dot(nor, vec3(0, 1, 0)));
 
-    finalColor = mix(rockColor, snowColor, smoothstep(-38.0, -35.0, pos.y) * snowSlopeFactor);
-  } else {
-    float waterNoise = perlin(pos * 0.05);
-    finalColor = mix(waterColor1, waterColor2, waterNoise);
+      finalColor = mix(rockColor, snowColor, smoothstep(-38.0, -35.0, pos.y) * snowSlopeFactor);
+      break;
+    case 2:
+      float waterNoise = perlin(pos * 0.05);
+      finalColor = mix(waterColor1, waterColor2, waterNoise);
+      break;
+    case 3:
+      finalColor = pipeColor;
+      break;
+    case 4:
+      float time = u_Time / 5.0 + pos.x + pos.z;
+      finalColor = vec3(
+        (sin(time) + 1.0) / 2.0, 
+        (sin(time + 2.0943951) + 1.0) / 2.0, 
+        (sin(time + 4.1887902) + 1.0) / 2.0
+      );
+      break;
   }
 
   return finalColor;
