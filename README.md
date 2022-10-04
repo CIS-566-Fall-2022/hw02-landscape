@@ -2,6 +2,10 @@
 
 ![](img/mybridge4.PNG)
 
+**Note my live demo currently does not work :(**
+
+**Took 1 Late Day**
+
 For my SDF terrain project, I decided to try modeling the sunset landscape of Hyrule Field
 from the Nintendo game The Legend of Zelda: Twilight Princess. While not my favorite
 Zelda game, the artstyle of the near 20-year old game and its excessive use of bloom
@@ -38,6 +42,7 @@ versions: the original 2006 version, the Super Smash Bros. Brawl version from 20
 Super Smash Bros. Ultimate version from 2018.
 
 ![](img/SSBB_Bridge_of_Eldin.png)
+
 *Super Smash Bros. Brawl (2008)* \
 *Nintendo*\
 *Courtesy of [Zelda Wiki](https://zelda.fandom.com/wiki/Bridge_of_Eldin)*
