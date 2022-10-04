@@ -11,7 +11,7 @@ out vec4 out_Col;
 //Constants:
 #define EPSILON 1e-2
 #define MAX_RAY_STEPS 256
-#define MAX_DISTANCE 50.0
+#define MAX_DISTANCE 1000.0
 
 
 //Structs:
@@ -36,6 +36,8 @@ struct Geom
 //...
 
 //SDF Functions:
+
+
 Geom union_Geom(Geom g1, Geom g2) {
     Geom g;
     if (g1.distance < g2.distance) {
@@ -43,6 +45,16 @@ Geom union_Geom(Geom g1, Geom g2) {
     } else {
         return g2;
     }
+}
+
+Geom sdRoundBox_Geom( vec3 p, vec3 b, vec3 pos, float r, int id)
+{
+    Geom g;
+    p -= pos;
+    vec3 q = abs(p) - b;
+    g.distance = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+    g.material_id = id;
+    return g;
 }
 
 Geom sphereSDF_Geom(vec3 query_position, vec3 position, float radius, int id)
@@ -62,10 +74,12 @@ Geom planeSDF_Geom(vec3 queryPos, float height, int id)
 }
 
 Geom sceneSDF_Geom(vec3 queryPos) {
-    Geom sphere = sphereSDF_Geom(queryPos, vec3(0.0,1.5,0.0), 1.0, 0);
+    Geom sphere = sphereSDF_Geom(queryPos, vec3(0.0,2.5,0.0), 1.0, 0);
     Geom plane = planeSDF_Geom(queryPos, 0.0, 1);
+    //( vec3 p, vec3 b, float r, int id)
+    Geom train = sdRoundBox_Geom(queryPos, vec3(10.f, 1.f, 0.5f), vec3(0.f, 0.0f, -80.f), 0.4f, 0);
     // return sphere;
-    return union_Geom(sphere, plane);
+    return union_Geom(train, plane);
 }
 
 float sceneSDF(vec3 queryPos) {
@@ -130,7 +144,8 @@ vec3 getSceneColor(vec2 uv) {
         // vec3 N = estimateNormal(isect.position);
         // color = N;
         if (isect.material_id == 0) {
-            color = vec3(0.);
+            vec3 N = estimateNormal(isect.position);
+            color = N;
         } else {
             color = vec3(1.);
         }
