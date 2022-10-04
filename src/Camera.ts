@@ -18,6 +18,8 @@ class Camera {
     this.controls = CameraControls(document.getElementById('canvas'), {
       eye: position,
       center: target,
+      flipX: true,
+      mode: 'turntable',
     });
     vec3.add(this.target, this.position, this.direction);
     mat4.lookAt(this.viewMatrix, this.controls.eye, this.controls.center, this.controls.up);
@@ -32,7 +34,8 @@ class Camera {
   }
 
   update() {
-    this.controls.tick();
+    // this.controls.tick();
+    vec3.add(this.controls.eye, this.controls.eye, vec3.fromValues(0.1, 0, 0));
     vec3.add(this.target, this.position, this.direction);
     mat4.lookAt(this.viewMatrix, this.controls.eye, this.controls.center, this.controls.up);
   }
