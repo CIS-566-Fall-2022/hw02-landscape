@@ -1,6 +1,6 @@
 # Project 2: SDFs
 
-![Live Demo](https://ess-aar.github.io/CIS5660-hw02-landscape)
+[Live Demo](https://ess-aar.github.io/CIS5660-hw02-landscape)
 
 ## Objective
 
