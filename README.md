@@ -13,7 +13,7 @@ In Spirited Away, there is a train that moves through the water. I decided to ad
 
 ### Live Demo
 
-See it [here](https://meganr28.github.io/hw02-landscape/)!
+The live demo link is currently broken, but I have added a video in the repository above (`landscape.mp4`)
 
 ### Features
 
