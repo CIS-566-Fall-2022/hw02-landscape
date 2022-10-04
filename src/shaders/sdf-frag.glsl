@@ -10,46 +10,77 @@ out vec4 out_Col;
 
 //Constants:
 #define EPSILON 1e-2
-#define MAX_RAY_STEPS 128
+#define MAX_RAY_STEPS 256
 #define MAX_DISTANCE 50.0
-
-const vec3 EYE = vec3(0.0, 2.5, 5.0);
-const vec3 REF = vec3(0.0, 1.0, 0.0);
-
 
 
 //Structs:
 
-//SDF Functions:
-
-float sphereSDF(vec3 query_position, vec3 position, float radius)
+struct Intersection 
 {
-    return length(query_position - position) - radius;
+    vec3 position;
+    float t;
+    int material_id;
+};
+
+struct Geom
+{
+    float distance;
+    int material_id;
+};
+
+//Material List:
+
+//0: 
+//1: 
+//...
+
+//SDF Functions:
+Geom union_Geom(Geom g1, Geom g2) {
+    Geom g;
+    if (g1.distance < g2.distance) {
+        return g1;
+    } else {
+        return g2;
+    }
 }
 
-float planeSDF(vec3 queryPos, float height)
+Geom sphereSDF_Geom(vec3 query_position, vec3 position, float radius, int id)
 {
-    return queryPos.y - height;
+    Geom g;
+    g.distance = length(query_position - position) - radius;
+    g.material_id = id;
+    return g;
+}
+
+Geom planeSDF_Geom(vec3 queryPos, float height, int id)
+{
+    Geom g;
+    g.distance = queryPos.y - height;
+    g.material_id = id;
+    return g;
+}
+
+Geom sceneSDF_Geom(vec3 queryPos) {
+    Geom sphere = sphereSDF_Geom(queryPos, vec3(0.0,1.5,0.0), 1.0, 0);
+    Geom plane = planeSDF_Geom(queryPos, 0.0, 1);
+    // return sphere;
+    return union_Geom(sphere, plane);
 }
 
 float sceneSDF(vec3 queryPos) {
-    float plane = planeSDF(queryPos, 0.0);
-    // return plane;
-    float sphere = sphereSDF(queryPos, vec3(0.0,1.5,0.0), 1.0);
-    // return sphere;
-    return min(sphere, plane);
+    return sceneSDF_Geom(queryPos).distance;
 }
 
 //Helper Functions:
-
 vec3 getRay(vec2 uv) {
-    float len = tan(3.14159 * 0.125) * distance(EYE, REF);
-    vec3 H = normalize(cross(vec3(0.0, 1.0, 0.0), REF - EYE));
-    vec3 V = normalize(cross(H, EYE - REF));
+    float len = tan(3.14159 * 0.125) * distance(u_Eye, u_Ref);
+    vec3 H = normalize(cross(vec3(0.0, 1.0, 0.0), u_Ref - u_Eye));
+    vec3 V = normalize(cross(H, u_Eye - u_Ref));
     V *= len;
     H *= len * u_Dimensions.x / u_Dimensions.y;
-    vec3 p = REF + uv.x * H + uv.y * V;
-    vec3 dir = normalize(p - EYE);
+    vec3 p = u_Ref + uv.x * H + uv.y * V;
+    vec3 dir = normalize(p - u_Eye);
     return dir;
 }
 
@@ -61,33 +92,50 @@ vec3 estimateNormal(vec3 p) {
     ));
 }
 
-float rayMarchSimple(vec2 uv)
+//Ray Marching
+Intersection rayMarch(vec2 uv)
 {
+    Intersection intersection;
+    intersection.t = 0.001;
+
     vec3 dir = getRay(uv);
-    float depth = 0.0;
-    for (int i=0; i < MAX_RAY_STEPS && depth < MAX_DISTANCE; ++i)
+    vec3 queryPos = u_Eye;
+
+    for (int i=0; i < MAX_RAY_STEPS && intersection.t < MAX_DISTANCE; ++i)
     {
-        float dist = sceneSDF(EYE + depth * dir);
+        Geom g = sceneSDF_Geom(queryPos);
+        float dist = g.distance;
         
         if (dist < EPSILON)
         {
-            return depth;
+            intersection.position = queryPos;
+            intersection.t = length(queryPos - u_Eye);
+            intersection.material_id = g.material_id;
+            return intersection;
         }
-
-        depth += dist;
+        queryPos += dir * dist;
     }
-    return -1.f;
+    
+    intersection.t = -1.0;
+    return intersection;
 }
 
+//Coloring:
 vec3 getSceneColor(vec2 uv) {
-    //1. Ray March to get sceneSDF!
-    float intersection = rayMarchSimple(uv);
+    //1. Ray March to get scene intersection / or lack there of
+    Intersection isect = rayMarch(uv);
     //2. Choose color based on distance value (but also, in future, we can categorize by material too...)
     vec3 color;
-    if (intersection > 0.0) {
-        color = vec3(0.9, 0.0, 0.2);
+    if (isect.t > 0.0) {
+        // vec3 N = estimateNormal(isect.position);
+        // color = N;
+        if (isect.material_id == 0) {
+            color = vec3(0.);
+        } else {
+            color = vec3(1.);
+        }
     } else {
-        color = vec3(0.3, 0.4, 0.9);
+        color = vec3(0.2, 0.2, 0.4);
     }
     return color;
 }
