@@ -679,7 +679,7 @@ vec3 getSceneColor(vec2 uv)
 {
   Intersection intersection = getRaymarchedIntersection(uv);
 
-  float time = sin(u_Time*0.05);
+  float time = sin(u_Time*0.1);
 
   // calculate light
   vec3 lightPos = vec3(5.0, 17.0, -2.0);
