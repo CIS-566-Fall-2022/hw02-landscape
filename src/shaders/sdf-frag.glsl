@@ -13,9 +13,10 @@ out vec4 out_Col;
 #define INFINITY         1000000.0
 #define MAX_STEPS        128
 #define MAX_DEPTH        100.0
+#define MAX_RAY_LENGTH   1000.0
 
-#define KEY_LIGHT        vec3(0.9, 0.8, 0.3) * 1.5
-#define FILL_LIGHT       vec3(0.2, 0.5, 0.9) * 0.2
+#define KEY_LIGHT        vec3(0.9, 0.8, 0.4) * 1.8
+#define FILL_LIGHT       vec3(0.5, 0.85, 0.95) * 0.2
 #define AMBIENT_LIGHT    vec3(0.9, 0.8, 0.3) * 0.2
 
 #define PI               3.1415926535897932384626433832795
@@ -35,6 +36,7 @@ struct Intersection
 
 struct Material
 {
+    int type;
     vec3 color;
 };
 
@@ -200,7 +202,7 @@ float fbm3D(vec3 p)
     return total;
 }
 
-float worley2D(vec2 p) {
+float worley2D(vec2 p, int animate) {
     // Tile space
     p *= 2.0;
     vec2 pInt = floor(p);
@@ -212,6 +214,7 @@ float worley2D(vec2 p) {
         for(int x = -1; x <= 1; ++x) {
             vec2 neighbor = vec2(float(x), float(z)); 
             vec2 point = noise2Dv(pInt + neighbor); // Random point in neighboring cell
+            if (animate == 1) point = 0.5 + 0.5 * sin(0.5 * u_Time * 0.1 + 6.2831 * point);
             
             // Distance between fragment and neighbor point
             vec2 diff = neighbor + point - pFract; 
@@ -223,10 +226,28 @@ float worley2D(vec2 p) {
     return minDist;
 }
 
+bool getRayLength(vec3 p, vec3 rayOrigin)
+{
+    return length(p - rayOrigin) > MAX_RAY_LENGTH;
+}
+
+float smoothUnion(float d1, float d2, float k) 
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h); 
+}
+
 // SDF for a sphere centered at objectPos
 float sphereSDF(vec3 rayPos, vec3 objectPos, float radius)
 {
     return length(rayPos - objectPos) - radius;
+}
+
+float capsuleSDF(vec3 rayPos, vec3 a, vec3 b, float r)
+{
+    vec3 pa = rayPos - a, ba = b - a;
+    float h = clamp(dot(pa, ba)/ dot(ba, ba), 0.0, 1.0);
+    return length( pa - ba * h ) - r;
 }
 
 float roundedBoxSDF(vec3 rayPos, vec3 objectPos, mat3 transform, vec3 b, float r)
@@ -241,74 +262,78 @@ float planeSDF(vec3 rayPos, float h)
     return rayPos.y - h; 
 }
 
+float trainSDF(vec3 rayPos, out Material mat)
+{
+    mat3 id = identity();
+
+    vec3 p = vec3(-250.0, -40.0, -63.5 + 0.8 * mod(u_Time, 300.0));
+    float carFront = roundedBoxSDF(rayPos, p, id, vec3(3.0, 1.0, 10.0), 1.0);
+
+    vec3 r = vec3(-250.0, -40.0, -41.5 + 0.8 * mod(u_Time, 300.0));
+    float carBack = roundedBoxSDF(rayPos, r, id, vec3(3.0, 1.0, 10.0), 1.0); 
+
+    float dMin = min(carFront, carBack);
+    mat.type = 2;
+    mat.color = vec3(0.9, 0.1, 0.1);
+    return dMin;
+}
+
 float groundSDF(vec3 rayPos, out Material mat)
 {
-    float wOffset = 1.f - worley2D(0.1 * rayPos.xz + sin(0.01 * u_Time));
+    // Water
+    float wOffset = 1.0 - worley2D(0.05 * rayPos.xz, 1);
+    wOffset += smoothstep(-1.0, 1.0, 29.8 * fract(wOffset));
     float water = planeSDF(rayPos - wOffset, -43.0);
 
+    // Cliff
     float xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
     float zOffset = cos(0.15 * rayPos.y - 1.0f);
     float cliff = roundedBoxSDF(rayPos, vec3(-45.0 + xOffset, -25.0, -80.0 + zOffset), rotateY3D(-0.508), vec3(20.5, 15.5, 55.5), 5.5);
     float dMin = min(water, cliff);
 
-    //float yOffset = 3.f * cos(0.05 * rayPos.x) * 2.f * sin(0.05 * rayPos.z) + (1.f - xOffset);
-    float mNoise = fbm2D(0.01 * rayPos.xz);
-    float yOffset = 200.f * mNoise;
-    float mountains = roundedBoxSDF(rayPos, vec3(-600.0, -253.0 + yOffset, -200.0 - yOffset), rotateY3D(-0.408), vec3(20.5, 0.5, 500.5), 120.5);
-    dMin = min(dMin, mountains);
+    // Mountains
+    float boundingBox = roundedBoxSDF(rayPos, vec3(-600.0, 0.0, -300.0), rotateY3D(-0.408), vec3(110.5, 50.0, 575.0), 0.0);
+    float mountains = INFINITY;
+    float mNoise = 0.0;
+    if (boundingBox <= EPSILON)
+    {
+        mNoise = fbm2D(0.01 * rayPos.xz);
+        float yOffset = 200.f * mNoise;
+        mountains = roundedBoxSDF(rayPos, vec3(-600.0, -253.0 + yOffset, -200.0 - yOffset), rotateY3D(-0.408), vec3(20.5, 0.5, 500.5), 120.5);
+        dMin = min(dMin, mountains);
+    }
+    //dMin = min(dMin, boundingBox);
 
-    //yOffset = fbm2D(vec2(sin(rayPos.x + 1.0f), sin(rayPos.z + 3.0f)));
-    yOffset = 2.f * worley2D(0.15 * rayPos.xz);
-    //yOffset = bias(0.7, yOffset);
-    yOffset = smoothstep(0.3, 0.9, 1.0 - yOffset);
-    //yOffset = pow(yOffset, 5.0);
+    // Vegetation
+    float wNoise = 2.f * worley2D(0.15 * rayPos.xz, 0);
+    //wNoise *= fbm2D(2.5f * rayPos.xz + 5.0);
+    float yOffset = smoothstep(0.3, 0.9, 1.0 - wNoise);
     float grass = roundedBoxSDF(rayPos, vec3(-45.0 + xOffset, -10.0 + yOffset, -80.0 + zOffset), rotateY3D(-0.508), vec3(19.0, 2.0, 55.5), 5.5);
     dMin = min(dMin, grass);
 
+    // Assign color
     if (dMin == water)
     {
-        mat.color = mix(vec3(0.1, 0.4, 0.9), vec3(0.1, 0.2, 0.8), wOffset);
+        mat.type = 3;
+        mat.color = mix(vec3(0.1, 0.4, 0.9), vec3(0.2, 0.5, 1.0), wOffset);
     }
-    else if (dMin == cliff) {
+    else if (dMin == cliff) 
+    {
+        mat.type = 4;
         mat.color = vec3(0.8, 0.7, 0.6);
     }
-    else if (dMin == mountains) {
+    else if (dMin == mountains) 
+    {
+        mat.type = 5;
         mat.color = mix(vec3(0.7, 0.3, 0.2), vec3(10.0, 10.0, 10.0), bias(mNoise, 0.01));
     }
-    else {
-        mat.color = vec3(0.0, 1.0, 0.0);
+    else 
+    {
+        mat.type = 6;
+        mat.color = mix(vec3(0.0, 0.9, 0.0), vec3(0.2, 1.0, 0.3), wNoise);
     }
     
     return dMin;
-}
-
-float treeSDF(vec3 rayPos, out Material mat)
-{
-    vec3 p = rotateY3D(0.978) * rayPos;
-    //p.y += 1.4f * sin(rayPos.x - 1.5f) + 2.0f; 
-    
-    //vec3 q = vec3(p.x, p.y, mod(p.z, 1.0)) + vec3(fbm3D(0.3 * p.xyz));
-    vec3 q = p;
-    // Finite repetition
-    //q = q - 2.0 * clamp(round(q / 2.0), vec3(-80.0, 0.0, -30.0), vec3(80.0, 0.0, 30.0));
-    //float sphere = sphereSDF(q, vec3(-80.0, -3.0, 10.0), 10.0);
-
-    // Deform sphere to look like trees/bush
-    //float displacement = sin(10.0*p.x);
-    float displacement = fbm3D(0.5 * p.xyz);
-    //float displacement = 0.0;
-    //sphere += displacement;
-    //float sphere2 = sphereSDF(q, vec3(-80.0, -3.0, 20.0), 10.0);
-    //float sphere3 = sphereSDF(q, vec3(-90.0, -3.0, 10.0), 10.0);
-    
-    float xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
-    float zOffset = cos(0.15 * rayPos.y - 1.0f);
-    float grass = roundedBoxSDF(rayPos, vec3(-45.0, -25.0, -80.0), rotateY3D(-0.008), vec3(20.5, 0.5, 500.5), 5.5);
-
-    //mat.color = mix(vec3(0.0, 0.9, 0.2), vec3(0.0, 0.8, 0.3), displacement) * displacement;
-    mat.color = vec3(0.0, 2.8, 0.8) * displacement;
-    //return min(sphere, min(sphere2, sphere3)) + displacement;
-    return grass;
 }
 
 float bridgeSDF(vec3 rayPos, out Material mat)
@@ -348,9 +373,11 @@ float bridgeSDF(vec3 rayPos, out Material mat)
     // Assign color depending on part of bridge
     if (dMin == bridgeFloor)
     {
+        mat.type = 0;
         mat.color = vec3(0.5);
     }
     else {
+        mat.type = 1;
         mat.color = vec3(0.9, 0.1, 0.1);
     }
 
@@ -364,28 +391,26 @@ float sceneSDF(vec3 rayPos, out Material mat)
     float dMin = ground;
 
     Material bridgeMat;
-    //float bridge = bridgeSDF(rayPos, bridgeMat);
-    //float dMin = min(ground, bridge);
+    float bridge = bridgeSDF(rayPos, bridgeMat);
+    dMin = min(dMin, bridge);
 
-    Material treeMat;
-    float trees = INFINITY;
-    //if (rayPos.x < -78.0 && rayPos.x > -100.0)
-    //{
-        //trees = treeSDF(rayPos, treeMat);
-        //dMin = min(dMin, trees);
-    //}
+    Material trainMat;
+    float train = trainSDF(rayPos, trainMat);
+    dMin = min(dMin, train);
 
     // Assign color
-    //float dMin = min(ground, bridge);
     if (dMin == ground) {
+        mat.type = groundMat.type;
         mat.color = groundMat.color;
     }
-    /*else if (dMin == bridge) {
+    else if (dMin == bridge) {
+        mat.type = bridgeMat.type;
         mat.color = bridgeMat.color;
     }
     else {
-        mat.color = treeMat.color;
-    }*/
+        mat.type = trainMat.type;
+        mat.color = trainMat.color;
+    }
 
     return dMin;
 }
@@ -395,38 +420,11 @@ float f(float x, float z)
     return 3.f * fbm2D(0.5 * vec2(x, z));
 }
 
-vec3 getBackgroundColor(Ray ray)
+vec3 getBackgroundColor(vec2 uv)
 {
-    vec3 color = vec3(0.5, 0.85, 0.85);
-
-    // Ray-plane intersection (from parametric equation of ray - Scratchapixel)
-    float t = (2500.f - ray.origin.y) / ray.direction.y;
-    if (t > 0.001)
-    {
-        vec3 p = ray.origin + t * ray.direction;
-        float noise = fbm2D(0.0001*p.xz);
-        float lambda = smoothstep(0.4, 0.7, noise);
-        color = mix(vec3(2.0), color, lambda);
-    }
-
-    /*// Sun
-    float sunSize = 5.0;
-    vec3 sunPosition = vec3(-1000.0, 73.0, 0.0);
-    vec3 sunDirection = normalize(sunPosition - ray.origin);
-    vec3 sunColor = vec3(1.0, 0.9, 0.3);
-    float angle = acos(dot(ray.direction, sunDirection)) * (360.0 / PI);
-
-    if (angle < sunSize) 
-    {
-        if (angle < 3.0)
-        {
-            color = sunColor;
-        }
-        else 
-        {
-            color = mix(sunColor, color, (angle - 3.0) / 2.0);
-        }
-    }*/
+    vec3 color = vec3(0.5, 0.85, 0.95);
+    float noise = smoothstep(0.61, 0.7, fbm2D(uv + vec2(0.005 * u_Time, 0.0)));
+    color = mix(vec3(1.0), color, noise);
 
     return color;
 }
@@ -458,6 +456,15 @@ vec3 estimateNormal(vec3 p)
     return normalize(vec3(gx, gy, gz));
 }
 
+vec3 editColor(Material mat, vec3 normal)
+{
+    if (mat.type == 4 || mat.type == 5)
+    {
+        return smoothstep(0.3, 0.7, mix(mat.color, vec3(0.0, 0.9, 0.0), normal.y));
+    }
+    return mat.color;
+}
+
 float calcShadows(vec3 rayOrigin, vec3 rayDirection, float k)
 {
     Material mat;
@@ -465,6 +472,7 @@ float calcShadows(vec3 rayOrigin, vec3 rayDirection, float k)
     for (float t = 2.0; t < float(MAX_STEPS); ++t)
     {
         vec3 p = rayOrigin + t * rayDirection;
+        if (getRayLength(p, rayOrigin)) break; 
         float s = sceneSDF(p, mat);
         if (s < EPSILON)
         {
@@ -482,13 +490,17 @@ Intersection raymarch(vec2 uv, Ray ray, out Material mat)
 
     vec3 p = ray.origin;
     for (int i = 0; i < MAX_STEPS; ++i)
-    {       
+    {     
+        // If ray is too long, skip (avoid testing empty space)
+        if (getRayLength(p, ray.origin)) break; 
+
         float dist = sceneSDF(p, mat);
         if (dist < EPSILON)
         {
             intersection.point = p;
             intersection.normal = estimateNormal(p);
             intersection.t = length(p - ray.origin);
+            mat.color = editColor(mat, intersection.normal);
             return intersection;
         }
         if (intersection.t > MAX_DEPTH)
@@ -555,15 +567,16 @@ void main() {
     }
     else 
     {
-        color = getBackgroundColor(ray);
+        color = getBackgroundColor(ndc);
     }
 
     // Distance fog
-    vec3 fog_dist = exp(-0.001 * isect.t * vec3(1.0, 1.8, 2.0));
+    vec3 fog_dist = exp(-0.001 * isect.t * vec3(1.0, 1.5, 1.7));
     vec3 fog_t = smoothstep(0.0, 0.8, fog_dist);
     color = mix(vec3(0.5, 0.85, 0.85), color, fog_t);
 
-    // Gamma correction
+    // Final color correction
+    color = pow(color, vec3(1.0, 0.9, 1.0)) + vec3(0.0, 0.0, 1.0) * 0.01;
     color = pow(color, vec3(1.0 / 2.2));
 
     // Compute final shaded color
