@@ -1,5 +1,5 @@
 import {vec2, vec3} from 'gl-matrix';
-//import * as Stats from 'stats-js';
+const Stats = require('stats-js');
 // import * as DAT from 'dat-gui';
 import Square from './geometry/Square';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
@@ -38,12 +38,12 @@ function main() {
   }, false);
 
   // Initial display for framerate
-  // const stats = Stats();
-  // stats.setMode(0);
-  // stats.domElement.style.position = 'absolute';
-  // stats.domElement.style.left = '0px';
-  // stats.domElement.style.top = '0px';
-  // document.body.appendChild(stats.domElement);
+  const stats = Stats();
+  stats.setMode(0);
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.left = '0px';
+  stats.domElement.style.top = '0px';
+  document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
   // const gui = new DAT.GUI();
@@ -84,7 +84,7 @@ function main() {
   // This function will be called every frame
   function tick() {
     camera.update();
-    // stats.begin();
+    stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
@@ -92,7 +92,7 @@ function main() {
       square,
     ], time);
     time++;
-    // stats.end();
+    stats.end();
 
     // Tell the browser to call `tick` again whenever it renders a new frame
     requestAnimationFrame(tick);

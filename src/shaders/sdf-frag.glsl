@@ -231,13 +231,13 @@ bool getRayLength(vec3 p, vec3 rayOrigin)
     return length(p - rayOrigin) > MAX_RAY_LENGTH;
 }
 
+// SDF functions
 float smoothUnion(float d1, float d2, float k) 
 {
     float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) - k*h*(1.0-h); 
 }
 
-// SDF for a sphere centered at objectPos
 float sphereSDF(vec3 rayPos, vec3 objectPos, float radius)
 {
     return length(rayPos - objectPos) - radius;
@@ -266,9 +266,11 @@ float trainSDF(vec3 rayPos, out Material mat)
 {
     mat3 id = identity();
 
+    // Front car
     vec3 p = vec3(-250.0, -40.0, -63.5 + 0.8 * mod(u_Time, 300.0));
     float carFront = roundedBoxSDF(rayPos, p, id, vec3(3.0, 1.0, 10.0), 1.0);
 
+    // Back car
     vec3 r = vec3(-250.0, -40.0, -41.5 + 0.8 * mod(u_Time, 300.0));
     float carBack = roundedBoxSDF(rayPos, r, id, vec3(3.0, 1.0, 10.0), 1.0); 
 
@@ -284,25 +286,33 @@ float groundSDF(vec3 rayPos, out Material mat)
     float wOffset = 1.0 - worley2D(0.05 * rayPos.xz, 1);
     wOffset += smoothstep(-1.0, 1.0, 29.8 * fract(wOffset));
     float water = planeSDF(rayPos - wOffset, -43.0);
+    float dMin = water;
 
     // Cliff
-    float xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
-    float zOffset = cos(0.15 * rayPos.y - 1.0f);
-    float cliff = roundedBoxSDF(rayPos, vec3(-45.0 + xOffset, -25.0, -80.0 + zOffset), rotateY3D(-0.508), vec3(20.5, 15.5, 55.5), 5.5);
-    float dMin = min(water, cliff);
+    float cliffBoundingBox = roundedBoxSDF(rayPos, vec3(-45.0, -25.0, -80.0), rotateY3D(-0.508), vec3(50.5, 50.0, 80.0), 0.0);
+    float cliff = INFINITY;
+    float xOffset = 0.0;
+    float zOffset = 0.0;
+    if (cliffBoundingBox <= EPSILON)
+    {
+        xOffset = fbm2D(0.3 * sin(rayPos.xz + 1.0f));
+        zOffset = cos(0.15 * rayPos.y - 1.0f);
+        cliff = roundedBoxSDF(rayPos, vec3(-45.0 + xOffset, -25.0, -80.0 + zOffset), rotateY3D(-0.508), vec3(20.5, 15.5, 55.5), 5.5);
+        dMin = min(water, cliff);
+    }
+    //dMin = min(water, cliffBoundingBox);
 
     // Mountains
-    float boundingBox = roundedBoxSDF(rayPos, vec3(-600.0, 0.0, -300.0), rotateY3D(-0.408), vec3(110.5, 50.0, 575.0), 0.0);
+    float mountainBoundingBox = roundedBoxSDF(rayPos, vec3(-600.0, 0.0, -300.0), rotateY3D(-0.408), vec3(110.5, 50.0, 575.0), 0.0);
     float mountains = INFINITY;
     float mNoise = 0.0;
-    if (boundingBox <= EPSILON)
+    if (mountainBoundingBox <= EPSILON)
     {
         mNoise = fbm2D(0.01 * rayPos.xz);
         float yOffset = 200.f * mNoise;
         mountains = roundedBoxSDF(rayPos, vec3(-600.0, -253.0 + yOffset, -200.0 - yOffset), rotateY3D(-0.408), vec3(20.5, 0.5, 500.5), 120.5);
         dMin = min(dMin, mountains);
     }
-    //dMin = min(dMin, boundingBox);
 
     // Vegetation
     float wNoise = 2.f * worley2D(0.15 * rayPos.xz, 0);
@@ -415,6 +425,7 @@ float sceneSDF(vec3 rayPos, out Material mat)
     return dMin;
 }
 
+// Terrain raymarching height function
 float f(float x, float z)
 {
     return 3.f * fbm2D(0.5 * vec2(x, z));
@@ -422,6 +433,7 @@ float f(float x, float z)
 
 vec3 getBackgroundColor(vec2 uv)
 {
+    // Clouds
     vec3 color = vec3(0.5, 0.85, 0.95);
     float noise = smoothstep(0.61, 0.7, fbm2D(uv + vec2(0.005 * u_Time, 0.0)));
     color = mix(vec3(1.0), color, noise);
@@ -429,6 +441,7 @@ vec3 getBackgroundColor(vec2 uv)
     return color;
 }
 
+// Function to get ray from uv coord (from Mushroom Lab)
 Ray getRay(vec2 uv)
 {
     Ray ray;
@@ -447,6 +460,7 @@ Ray getRay(vec2 uv)
     return ray;
 }
 
+// Estimate the normal at an intersection point
 vec3 estimateNormal(vec3 p)
 {
     Material mat;
@@ -456,6 +470,7 @@ vec3 estimateNormal(vec3 p)
     return normalize(vec3(gx, gy, gz));
 }
 
+// Add patchy green areas to the cliff and mountains
 vec3 editColor(Material mat, vec3 normal)
 {
     if (mat.type == 4 || mat.type == 5)
@@ -465,6 +480,7 @@ vec3 editColor(Material mat, vec3 normal)
     return mat.color;
 }
 
+// Soft shadows - from https://iquilezles.org/articles/rmshadows/
 float calcShadows(vec3 rayOrigin, vec3 rayDirection, float k)
 {
     Material mat;
@@ -477,6 +493,10 @@ float calcShadows(vec3 rayOrigin, vec3 rayDirection, float k)
         if (s < EPSILON)
         {
             return 0.0;
+        }
+        if (t > MAX_DEPTH)
+        {
+            break;
         }
         res = min(res, k * s / t);
         t += s;
@@ -559,8 +579,8 @@ void main() {
     {
         for (int i = 0; i < 3; i++)
         {
-            //float shadow = calcShadows(isect.point, lights[i].direction, 3.0);
-            float shadow = 1.0;
+            float shadow = calcShadows(isect.point, lights[i].direction, 3.0);
+            //float shadow = 1.0;
             float cosTheta = max(0.0, dot(isect.normal, lights[i].direction));
             color += mat.color * lights[i].color * cosTheta * clamp(0.0, 0.5, shadow);
         }    

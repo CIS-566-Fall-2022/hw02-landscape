@@ -1,4 +1,3 @@
-//var CameraControls = require('3d-view-controls');
 import {vec3, mat4} from 'gl-matrix';
 
 class Camera {
@@ -15,11 +14,6 @@ class Camera {
   up: vec3 = vec3.create();
 
   constructor(position: vec3, target: vec3, up: vec3) {
-    /*this.controls = CameraControls(document.getElementById('canvas'), {
-      eye: position,
-      center: target,
-    });*/
-    //vec3.add(this.target, this.position, this.direction);
     mat4.lookAt(this.viewMatrix, vec3.fromValues(8, 2, 10), vec3.fromValues(-13, 0, 0), vec3.fromValues(0, 1, 0));
   }
 
@@ -32,8 +26,6 @@ class Camera {
   }
 
   update() {
-    //this.controls.tick();
-    //vec3.add(this.target, this.position, this.direction);
     mat4.lookAt(this.viewMatrix, vec3.fromValues(8, 2, 10), vec3.fromValues(-13, 0, 0), vec3.fromValues(0, 1, 0));
   }
 };
