@@ -30,6 +30,10 @@ class ShaderProgram {
   unifDimensions: WebGLUniformLocation;
   unifTime: WebGLUniformLocation;
 
+  // custom
+  unifSunGlare: WebGLUniformLocation;
+  unifAtmosphere: WebGLUniformLocation;
+
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
 
@@ -47,6 +51,8 @@ class ShaderProgram {
     this.unifUp   = gl.getUniformLocation(this.prog, "u_Up");
     this.unifDimensions   = gl.getUniformLocation(this.prog, "u_Dimensions");
     this.unifTime   = gl.getUniformLocation(this.prog, "u_Time");
+    this.unifSunGlare = gl.getUniformLocation(this.prog, "u_SunGlare");
+    this.unifAtmosphere = gl.getUniformLocation(this.prog, "u_Atmosphere");
   }
 
   use() {
@@ -55,7 +61,19 @@ class ShaderProgram {
       activeProgram = this.prog;
     }
   }
+  setSunGlare(value:number){
+    this.use();
+    if(this.unifSunGlare !== -1) {
+      gl.uniform1f(this.unifSunGlare, value);
+    }
+  };
+  setAtmosphere(color: vec4) {
+    this.use();
+    if(this.unifAtmosphere !== -1) {
+      gl.uniform3f(this.unifAtmosphere, color[0], color[1], color[2]);
+    }
 
+  }
   setEyeRefUp(eye: vec3, ref: vec3, up: vec3) {
     this.use();
     if(this.unifEye !== -1) {

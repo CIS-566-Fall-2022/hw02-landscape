@@ -1,7 +1,24 @@
 # Project 2: SDFs
+[Live Demo](https://cis566-hw02-landscape-bigfranklin.netlify.app/)
+## Features
+* Ray marching optimization with sphere-tracing
+* Perlin-Worley based terrain generation
+* Two terrain types: mounatin and lake
+* Gradiant sky with fog
+* Cloud animation
+* Sun glare
+* Day cycle animation
+* Fly-over camera movement
+* Add basic raymarching optimizations: use sphere-tracing, limit the number of maximum steps to avoid infinite loop
+
+## Screenshot
+![image info](./img/screenshot1.png)
+
+The color scheme was inspried by Dune (2021).
+![image info](./img/dune_ref.png)
+
 
 ## Objective
-
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
 
 ## Set up your raymarcher
