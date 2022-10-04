@@ -1,3 +1,4 @@
+# Late Day: 10/03/22 - I will be using the first of my 3 late days on this assignment.
 # Project 2: SDFs
 
 ## Objective
