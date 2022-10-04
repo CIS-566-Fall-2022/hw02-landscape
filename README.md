@@ -1,5 +1,14 @@
 # Project 2: SDFs
 
+Link to demo: https://mikolaslorant.github.io/hw02-landscape/
+* Added multioctave noise for the sky.
+* Added fog.
+* Added three lights.
+* Added animated cars built with sdfs.
+* Added infintely repeating city blocks with sdf buildings.
+* Added vignette.
+* Added greyscale effect.
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
