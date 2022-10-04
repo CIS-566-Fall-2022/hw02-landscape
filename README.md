@@ -10,6 +10,7 @@ A world with eternal nights and snows. Snows form icebergs on this planet, but t
 * Infinite terrain with ice/water/lava. They all keep moving and melting. The terrain itself is a SDF plane, and is deformed by multiple noise functions. 
 * A sky with moving clouds.
 * 3-point lighting system
+* Distance fog
 
 ## Improvements:
 * I was trying to use the sphere SDF and repOp to create the snow. However, I failed to make the snow look more random on time, so I just stick with the screenspace snow implementation. 
