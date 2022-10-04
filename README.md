@@ -1,13 +1,12 @@
 # Project 2: SDFs
 
-[Live Demo](https://ess-aar.github.io/CIS5660-hw02-landscape)
-
+[Live Demo](https://ess-aar.github.io/CIS5660-hw02-landscape/)
 
 ![](./images/ss3.jpg)
 
 ![](./images/ss2.jpg)
 
-![](./images/ss1.jpg) 
+![](./images/ss1.jpg)
 
 For this project the idea was to create an alien canyon-like landscape. The terrain is created using FBM and perturbed (using rotation) FBM with a color gradient. The background is just some scattered light effect inspired from a cool shadertoy (linked below) with some stars. To add interest in the scene I chose to animate the water to look like it ebbs & flows. There are 3 lights in the scene: the key light is near the horizon, the fake illumination light is opposite the key light & the fill light is right at the top. Also, I added some reddish hue distance fog.
 
