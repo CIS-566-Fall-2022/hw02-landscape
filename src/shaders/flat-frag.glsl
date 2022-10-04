@@ -9,7 +9,8 @@ in vec2 fs_Pos;
 out vec4 out_Col;
 
 
-const int MAX_RAY_STEPS = 256;
+const int MAX_RAY_STEPS = 128;
+const float MAX_RAY_Z = 1000.0;
 const float FOV = 45.0;
 const float EPSILON = 1e-2;
 
@@ -25,6 +26,10 @@ const vec3 LIGHT_DIR = vec3(0.6, 1.0, 0.4) * 1.5;
 #define WATER_COLOR vec3(0.0588, 0.3686, 0.6117) * 1.5
 #define LAVA_COLOR vec3(0.81, 0.19, 0.063) * 1.5
 #define FIRE_COLOR vec3(0.81, 0.188, 0.063) * 1.5
+
+#define CLOUD_COLOR vec3(0.18, 0.266, 0.5098) 
+#define SKY_COLOR vec3(0.5, 0.7, 0.9)
+
 
 // Fill light is sky color, fills in shadows to not be black
 #define SKY_FILL_LIGHT vec3(0.18, 0.266, 0.5098) * 0.2
@@ -300,6 +305,17 @@ float heightField(vec3 queryPos, float planeHeight)
     return queryPos.y - planeHeight;
 }
 
+
+vec3 opRep( in vec3 p, in vec3 c)
+{
+    //c -= fbm2D(fs_Pos * 0.01);
+    return mod(p + 0.5 * c + cos(u_Time / 1000.0) , c) - 0.5  * c ;
+}
+vec3 opRepLim( in vec3 p, in float s, in vec3 lima, in vec3 limb )
+{
+    return p-s*clamp(round(p/s),lima,limb);
+}
+
 Geo sceneSDF(vec3 queryPos) 
 {
     Geo plane;
@@ -317,7 +333,7 @@ Geo sceneSDF(vec3 queryPos)
     plane.dist = planeSDF(queryPos, 1.0);
     sphere.dist = sphereSDF(queryPos, vec3(0.0, 0.0, 5.0) +  fbm3D(queryPos + time, 0.5), 5.0);
     
-    spherePlanet.dist = sphereSDF(queryPos, vec3(-20.0, 20.0, 80.0) , 1.0);
+    spherePlanet.dist = sphereSDF(queryPos, vec3(-20.0, 10.0, 50.0) , 0.8);
     
 
     float height = heightField(queryPos,fbm3D(queryPos, 1.f));
@@ -345,11 +361,17 @@ Geo sceneSDF(vec3 queryPos)
     }
     
     scene.dist = heightField(queryPos, 1.0 * worley);
-    //Geo fbmTerrain;
-    //fbmTerrain.dist  = planeSDF(1.0 * sinSmooth(fbm3D(queryPos, 1.f)) + queryPos, 0.0);
+
     scene.dist = smoothSubtraction(sphere.dist, scene.dist, 0.2);
     scene.dist = smoothUnion(spherePlanet.dist, scene.dist, 0.2);
-
+    //scene.dist = smoothUnion(scene.dist, sphereSDF(opRep(queryPos, vec3(2.0, 2.0 - fract(u_Time / 1000.0), 2.0)), vec3(0.0, 0.0, 0.0), 0.01 + 0.01 * fbm3D(queryPos, 1.0)), 0.2);
+    // float snow = sphereSDF(opRep(queryPos - vec3(0.0, - u_Time / 500.0, 0.0), vec3(1.0, 1.0 , 1.0)), vec3(0.0, 0.0, 0.0), 0.01);
+    // if (snow < EPSILON)
+    // {
+    //     scene.material_id = 2;
+    // }
+    //scene.dist = snow;
+    //scene.dist = smoothUnion(scene.dist, snow, 0.1); 
     scene.height = worley;
    return scene;
 }
@@ -385,6 +407,11 @@ Ray getRay(vec2 uv) {
     return ray;
 }
 
+bool isRayTooLong(vec3 queryPoint, vec3 origin)
+{
+    return length(queryPoint - origin) > MAX_RAY_Z;
+}
+
 Intersection getRaymarchedIntersection(vec2 uv)
 {
     Ray ray = getRay(uv);
@@ -392,8 +419,11 @@ Intersection getRaymarchedIntersection(vec2 uv)
     
     vec3 queryPoint = ray.origin;
 
+
     for (int i=0; i < MAX_RAY_STEPS; ++i)
     {
+        if (isRayTooLong(queryPoint, ray.origin)) break;
+
         Geo sceneGeo =  sceneSDF(queryPoint);
         float distanceToSurface = sceneGeo.dist;
         
@@ -444,17 +474,18 @@ vec3 getSceneColor(vec2 uv)
                                  mix(WATER_COLOR,ICE_COLOR, 2.0 * (intersection.height - 0.5)));
     else if (intersection.material_id == 3)
         lights[0] = DirectionalLight(normalize(dirLight),
-                                 mix(LAVA_COLOR, WATER_COLOR, intersection.height * 2.5));
+                                 mix(mix(1.0, 2.0,fbm3D(intersection.position, 0.5)) * LAVA_COLOR, WATER_COLOR, intersection.height * 2.5));
     else if (intersection.material_id == 4)
     { 
         vec3 color = mix(FIRE_COLOR, LAVA_COLOR, map(intersection.position.y, 0.0, 1.0, -20.0, 0.0));
+        color *= mix(1.0, 2.0, fbm3D(intersection.position, 0.5) / 1000.0);
         lights[0] = DirectionalLight(normalize(dirLight2),
                                  color);
     }
     else if(intersection.material_id == 5)
     { 
         lights[0] = DirectionalLight(normalize(dirLight),
-                                 mix(ICE_COLOR,WATER_COLOR, fbm2D(intersection.position.xz) ) );
+                                mix(1.0, 1.5,fbm1D(u_Time / 500.0)) * mix(ICE_COLOR,WATER_COLOR, fbm2D(intersection.position.xz) ) );
 
         return lights[0].color;
     }
@@ -464,10 +495,12 @@ vec3 getSceneColor(vec2 uv)
                                  WATER_COLOR);
     }
 
+
     lights[1] = DirectionalLight(vec3(0., 1., 0.),
                                  SKY_FILL_LIGHT);
     lights[2] = DirectionalLight(normalize(-vec3(15.0, 0.0, 10.0)),
                                  SUN_AMBIENT_LIGHT);
+
     backgroundColor = WATER_COLOR;
     
     vec3 albedo = vec3(0.5);
@@ -487,13 +520,11 @@ vec3 getSceneColor(vec2 uv)
     }
     else
     {
-        vec3 color2 = vec3(0.5, 0.7, 0.9) * 0.1;
-        color = vec3(0.18, 0.266, 0.5098) * 0.1;
 
         float clouds = getCloud(u_Eye, getRay(fs_Pos).direction);
-        color =  mix(color2, color, clouds);
-
+        color =  mix(SKY_COLOR, CLOUD_COLOR, clouds) * 0.1;
     }
+        color = mix(color, CLOUD_COLOR * 0.2, clamp(0.0, 1.0, intersection.distance / 80.0));
         color = pow(color, vec3(1. / 2.2));
         return color;
 }
@@ -503,7 +534,34 @@ void main() {
     vec2 uv = gl_FragCoord.xy/u_Dimensions.xy;
     uv = uv * 2.0 - 1.0;
     vec3 col = getSceneColor(uv);
-    
-    // Compute final shaded color
-    out_Col = vec4(col, 1.0);
+
+    float time = u_Time / 1000.0;
+
+// https://www.shadertoy.com/view/Mdt3Df
+    float snow = 0.0;
+    for(int k=0;k<12;k++){
+        for(int i=0;i<24;i++){
+            float cellSize = 0.01 + (float(i)*5.0);
+			float downSpeed = 0.6+(sin(time*0.4+float(k+i*20))+1.0)*0.00008;
+            vec2 uv = (gl_FragCoord.xy / u_Dimensions.x)+vec2(0.01*sin((time+float(k*6185))*0.6+float(i))*(5.0/float(i)),downSpeed*(time+float(k*1352))*(1.0/float(i)));
+
+            vec2 uvStep = (ceil((uv)*cellSize-vec2(0.5,0.5))/cellSize);
+            float x = fract(sin(dot(uvStep.xy,vec2(12.9898+float(k)*12.0,78.233+float(k)*315.156)))* 43758.5453+float(k)*12.0)-0.5;
+            float y = fract(sin(dot(uvStep.xy,vec2(62.2364+float(k)*23.0,94.674+float(k)*95.0)))* 62159.8432+float(k)*12.0)-0.5;
+
+            float randomMagnitude1 = sin(time*2.5)*0.7/cellSize;
+            float randomMagnitude2 = cos(time*2.5)*0.7/cellSize;
+
+            float d = 5.0*distance((uvStep.xy + vec2(x*sin(y),y)*randomMagnitude1 + vec2(y,x)*randomMagnitude2),uv.xy);
+
+            float omiVal = fract(sin(dot(uvStep.xy,vec2(32.4691,94.615)))* 31572.1684);
+            if(omiVal<0.08?true:false){
+                float newd = (x+1.0)*0.4*clamp(1.9-d*(15.0+(x*6.3))*(cellSize/1.4),0.0,1.0);
+
+                snow += newd;
+            }
+        }
+    }
+
+    out_Col = vec4(mix(col, vec3(mix(0.8, 1.0, snow)), snow) , 1.0);
 }

@@ -12,9 +12,6 @@ out vec4 out_Col;
 // https://www.shadertoy.com/view/Mdt3Df
 
 void main() {
-    // vec2 uv = gl_FragCoord.xy/u_Dimensions.xy;
-    // uv = uv * 2.0 - 1.0;
-    // vec3 col = getSceneColor(uv);
 
     float time = u_Time / 1000.0;
 
@@ -44,10 +41,5 @@ void main() {
             }
         }
     }
-
-    if (snow > 0.1)
     out_Col = vec4(vec3(snow),1.0);
-    else
-    out_Col = vec4(0.0);
-
 }

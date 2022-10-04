@@ -62,13 +62,14 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 0));
+  const camera = new Camera(vec3.fromValues(0, 5, -10), vec3.fromValues(0, -10, 50));
   const camera2 = new Camera(vec3.fromValues(0, 0, -10), vec3.fromValues(0, 0, 0));
 
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(164.0 / 255.0, 233.0 / 255.0, 1.0, 1);
   gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
 
   gl.enable(gl.BLEND_COLOR); //Enable blending.
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); //Set blending function.
@@ -106,11 +107,9 @@ function main() {
       square,
     ], time);
     
-    //gl.disable(gl.DEPTH_TEST);
     // renderer.render(camera, snow, [
     //   square,
     // ], time);
-    //gl.enable(gl.DEPTH_TEST);
     
     time++;
 
