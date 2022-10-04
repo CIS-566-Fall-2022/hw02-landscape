@@ -2,6 +2,36 @@
 
 [Live Demo](https://ess-aar.github.io/CIS5660-hw02-landscape)
 
+
+![](./images/ss3.jpg)
+
+![](./images/ss2.jpg)
+
+![](./images/ss1.jpg)
+
+For this project the idea was to create an alien canyon-like landscape. The terrain is created using FBM and perturbed (using rotation) FBM with a color gradient. The background is just some scattered light effect inspired from a cool shadertoy (linked below) with some stars. To add interest in the scene I chose to animate the water to look like it ebbs & flows. There are 3 lights in the scene: the key light is near the horizon, the fake illumination light is opposite the key light & the fill light is right at the top. Also, I added some reddish hue distance fog.
+
+There is much I would still like to work on & fix for this project. The artifacts on the terrain give it a more canyon-like look, but I would like to fix the artifacts where it joins the water which becomes very obvious as it animated. I would also like to send more time tweaking the lighting in the scene to create more depth.
+
+Noise used: 2D FBM, Rotated 2D FBM
+
+Toolbox functions used: Linear Interpolation, Cosine Interpolation, Sin waves, Re-mapping function
+
+### Parameters
+
+Following parameters are exposed:
+
+- Move Camera: toggle to use mouse input to move camera around
+
+### References
+- CIS 5660 Noise, Toolbox Function material
+- CIS 5660 Lab material
+- [Ray Marching Terrains](https://iquilezles.org/articles/terrainmarching/)
+- [Fog](https://iquilezles.org/articles/fog/)
+- [Sirenian Dawn](https://www.shadertoy.com/view/XsyGWV)
+- [The Book of Shaders](https://thebookofshaders.com/13/)
+
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
