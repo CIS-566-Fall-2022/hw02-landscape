@@ -1,3 +1,26 @@
+# Ever Melting World
+[Live Demo](https://leo-cggt.github.io/hw02-landscape/)
+![An Ever Melting World](img/demo.gif)   
+
+# Overview
+A world with eternal nights and snows. Snows form icebergs on this planet, but the center of the planet is a giant fire crater, constantly melting the ice and turning them into lava. 
+
+## Features: 
+* Raymarching with optimizations like sphere-tracing and far-plane clipping
+* Infinite terrain with ice/water/lava. They all keep moving and melting. The terrain itself is a SDF plane, and is deformed by multiple noise functions. 
+* A sky with moving clouds.
+* 3-point lighting system
+* Distance fog
+
+## Improvements:
+* I was trying to use the sphere SDF and repOp to create the snow. However, I failed to make the snow look more random on time, so I just stick with the screenspace snow implementation. 
+* The performance is very bad. There are still a lot of room for improvements.
+
+## Reference:
+1. https://iquilezles.org/articles/distfunctions/
+2. https://www.shadertoy.com/view/Mdt3Df
+<br /><br />
+
 # Project 2: SDFs
 
 ## Objective
