@@ -566,10 +566,10 @@ float sceneSDF(vec3 queryPos, out int material_id)
   int carMaterialID;
   float car = carSDF(queryPos, carMaterialID);
   
-  float colorResult = min(trees, terrain);
   float result = smoothUnion(trees, terrain, 0.7);
   result = min(road, result);
   result = min(car, result);
+  float colorResult = min(trees, terrain);
   colorResult = min(road, colorResult);
   colorResult = min(car, colorResult);
   if(colorResult == trees){
@@ -662,9 +662,9 @@ float softshadow(vec3 lightDir, vec3 origin, float mint, float k)
 {
     float res = 1.0;
     float t = mint;
-    for(int i = 0; i < MAX_STEPS; ++i)
+    for(int i = 0; i < 70; ++i)
     {
-      int useless_material_id;
+      int useless_material_id = 0;
       float h = sceneSDF(origin + lightDir * t, useless_material_id);
       if( h < 0.001 )
           return 0.0;
@@ -703,7 +703,7 @@ vec3 getSceneColor(vec2 uv)
     }
     else if(intersection.material_id == TERRAIN_SHADOW_MATERIAL_ID){
       float shadow = softshadow(lightDir, intersection.position, 0.1, 32.0);
-      color *= TERRAIN_COL* shadow;
+      color *= TERRAIN_COL * shadow;
     }
     else if(intersection.material_id == TERRAIN2_MATERIAL_ID){
       color *= TERRAIN2_COL;
