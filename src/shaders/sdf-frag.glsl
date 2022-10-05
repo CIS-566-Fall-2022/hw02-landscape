@@ -10,10 +10,26 @@ out vec4 out_Col;
 
 //Constants:
 #define EPSILON 1e-2
-#define MAX_RAY_STEPS 512
+#define MAX_RAY_STEPS 256
 #define MAX_DISTANCE 100.0
 
+//Toolbox functions:
 
+float easeInOutCubic(float x) {
+    if (x < 0.5) {
+        return 4.0 * x * x * x;
+    } else {
+        1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
+    }
+}
+
+float bias(float t, float b) {
+    return (t / ((((1.0/b) - 2.0)*(1.0 - t))+1.0));
+}
+
+float easeInQuad(float x) {
+    return x * x;
+}
 //Structs:
 
 struct Intersection 
@@ -78,9 +94,38 @@ float fbm(vec2 p, int N_OCTAVES) {
     // return 1.f;
 }
 
+//
+
+vec3 hash3( vec2 p )
+{
+    vec3 q = vec3( dot(p,vec2(127.1,311.7)), 
+				   dot(p,vec2(269.5,183.3)), 
+				   dot(p,vec2(419.2,371.9)) );
+	return fract(sin(q)*43758.5453);
+}
+
+float voronoise( in vec2 p, float u, float v )
+{
+	float k = 1.0+63.0*pow(1.0-v,6.0);
+
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    
+	vec2 a = vec2(0.0,0.0);
+    for( int y=-2; y<=2; y++ )
+    for( int x=-2; x<=2; x++ )
+    {
+        vec2  g = vec2( x, y );
+		vec3  o = hash3( i + g )*vec3(u,u,1.0);
+		vec2  d = g - f + o.xy;
+		float w = pow( 1.0-smoothstep(0.0,1.414,length(d)), k );
+		a += vec2(o.z*w,w);
+    }
+	
+    return a.x/a.y;
+}
+
 //SDF Functions:
-
-
 
 Geom union_Geom(Geom g1, Geom g2) {
     Geom g;
@@ -89,6 +134,20 @@ Geom union_Geom(Geom g1, Geom g2) {
     } else {
         return g2;
     }
+}
+
+Geom subtract_Geom(Geom g1, Geom g2) {
+    Geom g;
+    if (-g1.distance > g2.distance) {
+        return g1;
+    } else {
+        return g2;
+    }
+}
+
+float smoothUnion( float d1, float d2, float k ) {
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h); 
 }
 
 Geom sdBox_Geom( vec3 p, vec3 b, vec3 pos, int id)
@@ -100,7 +159,6 @@ Geom sdBox_Geom( vec3 p, vec3 b, vec3 pos, int id)
     g.material_id = id;
     return g;
 }
-
 
 Geom sdRoundBox_Geom( vec3 p, vec3 b, vec3 pos, float r, int id)
 {
@@ -128,49 +186,38 @@ Geom planeSDF_Geom(vec3 queryPos, float height, int id)
     return g;
 }
 
+Geom xz_planeSDF_Geom(vec3 queryPos, float pos, int id)
+{
+    Geom g;
+    g.distance = queryPos.z - pos;
+    g.material_id = id;
+    return g;
+}
+
+float midMountainNoise(vec3 queryPos) {
+    float n = 7.f * voronoise(0.25 * queryPos.xz + vec2(0.02 * u_Time), 1.0, 1.0);
+    float w1 = bias(1.f - smoothstep(0.0, 1.0, 13.f * (abs((queryPos.z - 100.f)) / 100.f)), 0.7f);
+
+    return w1 * n;
+}
+
+float bigMountainNoise(vec3 queryPos) {
+    float n = 50.f * voronoise(0.03 * queryPos.xz + vec2(0.001 * u_Time + 1000.0), 1.0, 1.0);
+    float w1 = 1.f - smoothstep(0.0, 1.0, (abs((queryPos.z - 40.f)) / 40.f));
+    w1 = easeInQuad(w1);
+    return w1 * n;
+}
+
 Geom sceneSDF_Geom(vec3 queryPos) {
 
-    // Geom train = sdBox_Geom(queryPos, vec3(35.0f, 1.f, 1.f), vec3(u_Ref.x, u_Ref.y - 0.1f, u_Ref.z + 10.f), 0);
-    //The train is 2 units away from us...
+    Geom train = sdBox_Geom(queryPos, vec3(13.0f, 0.8f, 0.8f), vec3(u_Ref.x, u_Ref.y - 0.6f, u_Ref.z + 110.f), 0);
 
     Geom plane;
-    // if (queryPos.z < 80.f) {
-    //     plane = planeSDF_Geom(queryPos, 0.0, 4);
-    // }
-    // else if (queryPos.z < 82.f) {
-    // if (queryPos.z < 70.f) {
-    //     // plane = planeSDF_Geom(queryPos, 0.9f * abs(sin(queryPos.x)), 1);
-    //     plane = planeSDF_Geom(queryPos, 1.0f, 1);
-    // } else if (queryPos.z < 90.f) {
-    //     float hT = mix(1.f, 0.f, (queryPos.z - 85.f)/5.f);
-    //     plane = planeSDF_Geom(queryPos, hT, 1);
-    // } else {
-    //     plane = planeSDF_Geom(queryPos, 0.0, 4);
-    // }
 
-    if (queryPos.z < 80.f) {
-        plane = planeSDF_Geom(queryPos, sin(queryPos.z - 80.f), 1);
-    } else {
-        plane = planeSDF_Geom(queryPos, 0.f, 1);
-    }
-    // plane = planeSDF_Geom(queryPos, sin(queryPos.z), 1);
-    // }
-    // } else if (queryPos.z < 84.f) { //
-    //     plane = planeSDF_Geom(queryPos, 0.0, 2);
-    //     //Generate a lookup table for the plane's noise ...
-    // } else if (queryPos.z < 90.f){
-    //     plane = planeSDF_Geom(queryPos, 0.0, 3);
-    // } else {
-    //     plane = planeSDF_Geom(queryPos, 0.0, 5);
-    // }
+    plane = planeSDF_Geom(queryPos, midMountainNoise(queryPos) + bigMountainNoise(queryPos), 1);
 
-    // if (queryPos.x < 0.f) {
-    //     plane = planeSDF_Geom(queryPos, 0.0, 4);
-    // }
-    
-    // return sphere;
-    // return union_Geom(train, plane);
-    return plane;
+    return union_Geom(plane, train);
+    // return subtract_Geom(plane, zxPlane);
 }
 
 float sceneSDF(vec3 queryPos) {
@@ -250,8 +297,8 @@ vec3 getSceneColor(vec2 uv) {
         color = vec3(0.67, 0.81, 0.88);
     }
 
-    vec3 backgroundColor = vec3(0.67, 0.81, 0.88);
-    // float fogT = smoothstep(10.0, 35.0, distance(isect.position, u_Eye));
+    vec3 backgroundColor = vec3(0.67, 0.81, 0.88) * 1.f;
+    // float fogT = smoothstep(10.0, 220.0, distance(isect.position, u_Eye));
     // color = mix(color.rgb, backgroundColor, fogT);
     // color = pow(color.rgb, vec3(1.0, 1.2, 1.5));
     return color;
