@@ -1,3 +1,14 @@
+#Live Demo: https://logancho.github.io/hw02-landscape/
+
+Status: Incomplete ... (no colouring implemented) but I'm still really proud of what I managed to create, and will probably be working on it for a lot longer after this deadline since I really want to see the finished product.
+
+Summary: I wanted to do a scenic train environment, with mountains of different sizes moving in a sort of parallax affected type of way in the background. I accomplished the noise of the 2 layers of my mountains by using an fbm noise generator built off of IQ's 'voronoise' function from Shadertoy. It was really, really difficult for me at first when I was trying to interpolate between the flat plane into the two layers of mountains, since the SDFs became full of weird holes and errors unless the transition was incredibly smooth. This is where the toolbox functions, especially easing, came really in handy, as by adjusting the interpolation of the noise with the easing functions, I was able to have smooth transitions that didn't cause as many holes in the ray marching process. For the telephone poles, they're unfinished, but I used IQ's modulo repetition that Adam explained to me during this Monday's lecture.
+
+I also used fog, similar to Adam's example last week on Shadertoy, to help the further, larger mountains fade into the background a little better.
+
+Overall, I really want to see this scene coloured, and also maybe performing a little better (planning on going to OH this week to ask for some tips on areas I could optimize) but my head hurts, and I haven't seen my bed in a while so I think this will do for tonight : ) !
+
+# Late Day: 10/03/22 - I will be using the first of my 3 late days on this assignment.
 # Project 2: SDFs
 
 ## Objective
