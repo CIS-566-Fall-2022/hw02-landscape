@@ -11,7 +11,7 @@ out vec4 out_Col;
 //Constants:
 #define EPSILON 1e-2
 #define MAX_RAY_STEPS 256
-#define MAX_DISTANCE 100.0
+#define MAX_DISTANCE 200.0
 
 //Toolbox functions:
 
@@ -91,10 +91,9 @@ float fbm(vec2 p, int N_OCTAVES) {
         frequency *= 2.f;
     }
     return total/maxValue;
-    // return 1.f;
 }
 
-//
+////IQ Voronoise from ShaderToy:
 
 vec3 hash3( vec2 p )
 {
@@ -121,9 +120,26 @@ float voronoise( in vec2 p, float u, float v )
 		float w = pow( 1.0-smoothstep(0.0,1.414,length(d)), k );
 		a += vec2(o.z*w,w);
     }
-	
     return a.x/a.y;
 }
+
+float voroFBM(vec2 p, vec2 time, int N_OCTAVES) {
+
+    float total = 0.f;
+    float frequency = 1.f;
+    float amplitude = 1.f;
+    float persistence = 0.5f;
+    float maxValue = 0.f;  // Used for normalizing result to 0.0 - 1.0
+
+    for(int i = 0; i < N_OCTAVES; i++) {
+        total += voronoise(frequency * (p+time), 1.0, 1.0) * amplitude;
+        maxValue += amplitude;
+        amplitude *= persistence;
+        frequency *= 2.f;
+    }
+    return total/maxValue;
+}
+////
 
 //SDF Functions:
 
@@ -195,14 +211,16 @@ Geom xz_planeSDF_Geom(vec3 queryPos, float pos, int id)
 }
 
 float midMountainNoise(vec3 queryPos) {
-    float n = 7.f * voronoise(0.25 * queryPos.xz + vec2(0.02 * u_Time), 1.0, 1.0);
+    // float n = 7.f * voronoise(0.25 * queryPos.xz + vec2(0.02 * u_Time), 1.0, 1.0);
+    float n = 9.f * voroFBM(0.2 * queryPos.xz, vec2(0.02 * u_Time, 0.0), 5);
     float w1 = bias(1.f - smoothstep(0.0, 1.0, 13.f * (abs((queryPos.z - 100.f)) / 100.f)), 0.7f);
 
     return w1 * n;
 }
 
 float bigMountainNoise(vec3 queryPos) {
-    float n = 50.f * voronoise(0.03 * queryPos.xz + vec2(0.001 * u_Time + 1000.0), 1.0, 1.0);
+    // float n = 50.f * voronoise(0.03 * queryPos.xz + vec2(0.002 * u_Time + 800.0), 0.7, 0.7);
+    float n = 50.f * voroFBM(0.06 * queryPos.xz, vec2(0.004 * u_Time + 800.0, 0.0), 7);
     float w1 = 1.f - smoothstep(0.0, 1.0, (abs((queryPos.z - 40.f)) / 40.f));
     w1 = easeInQuad(w1);
     return w1 * n;
@@ -210,14 +228,13 @@ float bigMountainNoise(vec3 queryPos) {
 
 Geom sceneSDF_Geom(vec3 queryPos) {
 
-    Geom train = sdBox_Geom(queryPos, vec3(13.0f, 0.8f, 0.8f), vec3(u_Ref.x, u_Ref.y - 0.6f, u_Ref.z + 110.f), 0);
+    Geom train = sdBox_Geom(queryPos, vec3(10.0f, 0.5f, 0.5f), vec3(u_Ref.x, u_Ref.y - 0.75f, u_Ref.z + 110.f), 0);
 
     Geom plane;
 
     plane = planeSDF_Geom(queryPos, midMountainNoise(queryPos) + bigMountainNoise(queryPos), 1);
 
     return union_Geom(plane, train);
-    // return subtract_Geom(plane, zxPlane);
 }
 
 float sceneSDF(vec3 queryPos) {
@@ -298,9 +315,9 @@ vec3 getSceneColor(vec2 uv) {
     }
 
     vec3 backgroundColor = vec3(0.67, 0.81, 0.88) * 1.f;
-    // float fogT = smoothstep(10.0, 220.0, distance(isect.position, u_Eye));
-    // color = mix(color.rgb, backgroundColor, fogT);
-    // color = pow(color.rgb, vec3(1.0, 1.2, 1.5));
+    float fogT = smoothstep(10.0, 200.0, distance(isect.position, u_Eye));
+    color = mix(color.rgb, backgroundColor, fogT);
+    color = pow(color.rgb, vec3(1.0, 1.2, 1.5));
     return color;
 }
 
