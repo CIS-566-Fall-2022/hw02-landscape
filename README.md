@@ -1,3 +1,6 @@
+### Using 1 late day, but still submitting incomplete homework. Not feeling well, badly affected by cold.
+---
+
 # Project 2: SDFs
 
 ## Objective
