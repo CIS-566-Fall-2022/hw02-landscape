@@ -10,8 +10,8 @@ out vec4 out_Col;
 
 //Constants:
 #define EPSILON 1e-2
-#define MAX_RAY_STEPS 256
-#define MAX_DISTANCE 200.0
+#define MAX_RAY_STEPS 128
+#define MAX_DISTANCE 50.0
 
 //Toolbox functions:
 
@@ -50,48 +50,6 @@ struct Geom
 //0: 
 //1: 
 //...
-
-//Noise Functions:
-
-vec2 hash( vec2 p )
-{
-	p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
-	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
-}
-
-//IQ
-float noise(vec2 p )
-{
-    const float K1 = 0.366025404; // (sqrt(3)-1)/2;
-    const float K2 = 0.211324865; // (3-sqrt(3))/6;
-
-	vec2  i = floor( p + (p.x+p.y)*K1 );
-    vec2  a = p - i + (i.x+i.y)*K2;
-    float m = step(a.y,a.x); 
-    vec2  o = vec2(m,1.0-m);
-    vec2  b = a - o + K2;
-	vec2  c = a - 1.0 + 2.0*K2;
-    vec3  h = max( 0.5-vec3(dot(a,a), dot(b,b), dot(c,c) ), 0.0 );
-	vec3  n = h*h*h*h*vec3( dot(a,hash(i+0.0)), dot(b,hash(i + o)), dot(c,hash(i+1.0)));
-    return dot( n, vec3(70.0) );
-}
-
-float fbm(vec2 p, int N_OCTAVES) {
-
-    float total = 0.f;
-    float frequency = 1.f;
-    float amplitude = 1.f;
-    float persistence = 0.5f;
-    float maxValue = 0.f;  // Used for normalizing result to 0.0 - 1.0
-
-    for(int i = 0; i < N_OCTAVES; i++) {
-        total += noise(frequency * p) * amplitude;
-        maxValue += amplitude;
-        amplitude *= persistence;
-        frequency *= 2.f;
-    }
-    return total/maxValue;
-}
 
 ////IQ Voronoise from ShaderToy:
 
@@ -210,31 +168,47 @@ Geom xz_planeSDF_Geom(vec3 queryPos, float pos, int id)
     return g;
 }
 
+Geom pole_Geom( vec3 p, vec3 b, vec3 pos, float h, int id)
+{
+    vec3 poleScale = b * vec3(0.08, 1.0, 0.08);
+    p.y -= h;
+    Geom g = sdBox_Geom(p, poleScale, pos, id);
+    return g;
+}
+
 float midMountainNoise(vec3 queryPos) {
     // float n = 7.f * voronoise(0.25 * queryPos.xz + vec2(0.02 * u_Time), 1.0, 1.0);
-    float n = 9.f * voroFBM(0.2 * queryPos.xz, vec2(0.02 * u_Time, 0.0), 5);
+    float n = 9.f * voroFBM(0.2 * queryPos.xz, vec2(0.12 * u_Time, 0.0), 5);
     float w1 = bias(1.f - smoothstep(0.0, 1.0, 13.f * (abs((queryPos.z - 100.f)) / 100.f)), 0.7f);
+
 
     return w1 * n;
 }
 
 float bigMountainNoise(vec3 queryPos) {
-    // float n = 50.f * voronoise(0.03 * queryPos.xz + vec2(0.002 * u_Time + 800.0), 0.7, 0.7);
-    float n = 50.f * voroFBM(0.06 * queryPos.xz, vec2(0.004 * u_Time + 800.0, 0.0), 7);
+
+    float n = 50.f * voroFBM(0.03 * queryPos.xz + vec2(-1000.0), vec2(0.004 * u_Time, 0.0) , 7);
+
     float w1 = 1.f - smoothstep(0.0, 1.0, (abs((queryPos.z - 40.f)) / 40.f));
     w1 = easeInQuad(w1);
+
     return w1 * n;
+}
+
+vec3 opRep( vec3 p, vec3 c ) {
+    vec3 q = mod(p+0.5*c,c)-0.5*c;
+    return q;
 }
 
 Geom sceneSDF_Geom(vec3 queryPos) {
 
-    Geom train = sdBox_Geom(queryPos, vec3(10.0f, 0.5f, 0.5f), vec3(u_Ref.x, u_Ref.y - 0.75f, u_Ref.z + 110.f), 0);
+    Geom plane = planeSDF_Geom(queryPos, midMountainNoise(queryPos) + bigMountainNoise(queryPos), 0);
+    Geom train = sdBox_Geom(queryPos, vec3(10.0f, 0.5f, 0.5f), vec3(u_Ref.x, u_Ref.y - 0.75f, u_Ref.z + 110.f), 1);
+    Geom tracks = sdBox_Geom(queryPos, vec3(50.0f, 0.1f, 0.5f), vec3(u_Ref.x, u_Ref.y - 0.95f, u_Ref.z + 110.f), 2);
+    
+    Geom pole = pole_Geom(opRep(queryPos, vec3(15.f, 0.f, 0.f)), vec3(0.4f, 0.6f, 0.4f), opRep(-vec3(12.f * u_Time, 0, 0) + vec3(u_Ref.x + 15.f, u_Ref.y - 1.0f, u_Ref.z + 110.25f), vec3(15., 0., 0.)), 1.f, 10);
 
-    Geom plane;
-
-    plane = planeSDF_Geom(queryPos, midMountainNoise(queryPos) + bigMountainNoise(queryPos), 1);
-
-    return union_Geom(plane, train);
+    return union_Geom(pole, union_Geom(union_Geom(plane, train), tracks));
 }
 
 float sceneSDF(vec3 queryPos) {
@@ -307,15 +281,20 @@ vec3 getSceneColor(vec2 uv) {
         // } else if (isect.material_id == 4) {
             // color = vec3(0.1);
         // }else {
-            vec3 N = estimateNormal(isect.position);
-            color = N;
+            if (isect.material_id == 10) {
+                color = vec3(0.);
+            } else {
+                vec3 N = estimateNormal(isect.position);
+                color = N;
+            }
+            
         // }
     } else {
         color = vec3(0.67, 0.81, 0.88);
     }
 
     vec3 backgroundColor = vec3(0.67, 0.81, 0.88) * 1.f;
-    float fogT = smoothstep(10.0, 200.0, distance(isect.position, u_Eye));
+    float fogT = smoothstep(10.0, 220.0, distance(isect.position, u_Eye));
     color = mix(color.rgb, backgroundColor, fogT);
     color = pow(color.rgb, vec3(1.0, 1.2, 1.5));
     return color;
