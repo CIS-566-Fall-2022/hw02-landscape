@@ -2,7 +2,8 @@
 
 ![](img/mybridge4.PNG)
 
-**Note my live demo currently does not work :(**
+**[LIVE SITE HERE](https://nicholasmoon.github.io/hw02-landscape/)**
+**You may want to shrink screen size, it is taxing on your machine**
 
 **Took 1 Late Day**
 
