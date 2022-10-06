@@ -5,9 +5,11 @@ abstract class Drawable {
 
   bufIdx: WebGLBuffer;
   bufPos: WebGLBuffer;
+  bufNor: WebGLBuffer;
 
   idxBound: boolean = false;
   posBound: boolean = false;
+  norBound: boolean = false;
 
   abstract create() : void;
 
@@ -38,6 +40,13 @@ abstract class Drawable {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bufPos);
     }
     return this.posBound;
+  }
+
+  bindNor(): boolean {
+    if (this.norBound) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bufNor);
+    }
+    return this.norBound;
   }
 
   elemCount(): number {
