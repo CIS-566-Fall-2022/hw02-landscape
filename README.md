@@ -1,5 +1,7 @@
 # Project 2: SDFs
 
+I used fbm noise to add texture to a plane sdf. This created the mountaims. I also created an out variable to output an inbased on what object the ray hit to color the mountains and water. For the water I unioned a plane and varied the height with a triangle wave to create a wave simulation. I also varied the lighting of the scene over time as well as the backgroun to give the effect of a night day cycle. I referenced the raymarching algorithms and lighting system we used in the mushroom lab to create my ray marching and lighting system using three point lighting.
+
 ## Objective
 
 Practice using raymarching, SDFs, and toolbox functions to sculpt a *beautiful* 3d landscape. 
