@@ -68,11 +68,11 @@ vec4 noised(vec3 x )
 
 //#define OCTAVES u_Octaves
 float fbm (vec3 v) {
-    int oct = 4;
+    int oct = 6;
     // Initial values
     float value = 0.0;
-    float amplitude = .5;
-    float frequency = 0.;
+    float amplitude = .8;
+    float frequency = 4.;
 
     // Loop of octaves
     for (int i = 0; i < oct; i++) {
@@ -81,6 +81,10 @@ float fbm (vec3 v) {
         amplitude *= .5;
     }
     return value;
+}
+
+float rand3D(vec3 co){
+    return fract(sin(dot(co.xyz ,vec3(12.9898,78.233,144.7272))) * 43758.5453);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -135,12 +139,20 @@ float sphereSDF(vec3 query_position, vec3 position, float radius)
 //queryPos
 float planeSDF(vec3 queryPos, float height)
 {
-    return queryPos.y - height;
+    return (queryPos.y - height) + fbm(queryPos);
 }
 
 float terrainSDF(vec3 queryPos)
 { //(queryPos.y - height) 
-    return sin(queryPos.x)*sin(queryPos.z);
+    return sin(queryPos.x)*
+    cos(queryPos.z*0.7)*10.
+     + fbm(0.05*queryPos);
+}
+
+float mountainSDF(vec3 queryPos){
+  //using xz plane
+  //how to pick random squares?
+  return 0.0;
 }
 
 float capsuleSDF( vec3 queryPos, vec3 a, vec3 b, float r )
@@ -177,6 +189,26 @@ vec3 bendPoint(vec3 p, float k)
     return q;
 }
 
+////////
+//toolbox
+float getBias(float time, float bias)
+{
+  return (time / ((((1.0/bias) - 2.0)*(1.0 - time))+1.0));
+}
+float getGain(float time, float gain)
+{
+  if(time < 0.5)
+    return getBias(time * 2.0,gain)/2.0;
+  else
+    return getBias(time * 2.0 - 1.0,1.0 - gain)/2.0 + 0.5;
+}
+float ease_in_quadratic(float t){
+    t = fract(t);
+    return t*t;
+}
+
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 //idea have sdf objects be a vec4: xyz = color, w = distance
@@ -187,9 +219,10 @@ float sceneSDF(vec3 queryPos)
     float plane = planeSDF(queryPos, 0.0);
     float waves = terrainSDF(queryPos + 0.5*fbm(queryPos));
     float sphere = sphereSDF(queryPos, vec3(0., 2., -2.), 1.);
-    float composite = plane + waves;
+    // waves = 0.;
+    float composite = plane + 0.5*waves;
     composite = min(composite, sphere); //to compose multiple things take the min
-    return composite;
+    return composite + 0.01*rand3D(queryPos);
     // return sphereSDF(queryPos, vec3(0., 1., 0.), 1.);
 }
 
@@ -219,13 +252,12 @@ Intersection getRaymarchedIntersection(vec2 uv)
     {
         float distanceToSurface = sceneSDF(queryPoint);
         
-        if (distanceToSurface < EPSILON)
+        if (distanceToSurface < EPSILON) //we hit something!
         {
             
             intersection.position = queryPoint;
             intersection.normal = vec3(0.0, 0.0, 1.0);
             intersection.distance = length(queryPoint - ray.origin);
-            
             return intersection;
         }
         
@@ -273,6 +305,20 @@ vec4 getSceneColor(vec2 uv)
     backgroundColor = SUN_KEY_LIGHT;
     
     vec3 albedo = vec3(0.5);
+    // vec3 c1 = vec3(255.,179.,186.) / 255.;
+    // vec3 c2 = vec3(255.,223.,186.) / 255.;
+    // vec3 c3 = vec3(255.,255.,186.) / 255.;
+    vec3 c1 = vec3(1.,0.,0.);
+    vec3 c2 = vec3(0.,1.,0.) ;
+    vec3 c3 = vec3(0.,0.,1.) ;
+    float lower_band = ease_in_quadratic(0.4*abs(sin(u_Time*0.2))); //0.3
+    if (1.2 + lower_band< y){
+      albedo  = c1;
+    } else if (lower_band < y && y <= 1.2 + lower_band){
+      albedo = c2;
+    } else if ( y <= lower_band){
+      albedo = c3;
+    }
     vec3 n = estimateNormal(intersection.position);
         
     // vec3 color = albedo *
@@ -299,11 +345,15 @@ vec4 getSceneColor(vec2 uv)
     else
     {
         // color = vec3(0.5, 0.7, 0.9); //background color
-        color = vec4(0.5, 0.7, 0.9, -1.); //background color
+
+        color = vec4(abs(sin(u_Time*0.02)), 0.7, 0.9, -1.); //background color
     }
         if (scene){
           // color = c_low;
           color.w = 0.5;
+          if (y > 1.){
+
+          }
         }
         
         // color = pow(color, vec3(1. / 2.2));
@@ -311,8 +361,9 @@ vec4 getSceneColor(vec2 uv)
         return color;
 }
 
-float rand3D(vec3 co){
-    return fract(sin(dot(co.xyz ,vec3(12.9898,78.233,144.7272))) * 43758.5453);
+vec4 invertColor(vec3 color){
+  vec4 r = vec4(1.) - vec4(color, 0.);
+  return r;
 }
 
 void main() {
@@ -328,23 +379,18 @@ void main() {
   col.w = alpha;
   vec4 inv_col = vec4(1.) - col;
   inv_col.w = 1.;
-  //VVVvary (pick npise from color then inv_col) with time mod later to make it sparkle VVV
-  float noise_col = rand3D(vec3(col));
+
+  float noise_col = rand3D(vec3(col))* getGain(u_Time, 0.3);
   float noise_col_inv = rand3D(vec3(inv_col));
   vec4 output_color = vec4(1.);
+  output_color = col;
+
   if (noise_col < .5){
     output_color = col;
   } else {
-    output_color = inv_col;
+    output_color = invertColor(vec3(col));
   }
-  // if (col == vec3(1., 0., 0.)){
-  //   alpha = 0.7;
-  // }
+  output_color.xyz *= getBias(u_Time, 0.9);
   out_Col = output_color;
 }
 
-//idea
-//have three terrains, and more mountainous
-//low, med, hi each have 2 colors in their respective areas
-//the two colors will use random noise and if noise <0.5 it will be color 1 else color 2
-//let's test this out.

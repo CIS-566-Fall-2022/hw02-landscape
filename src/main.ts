@@ -88,6 +88,7 @@ function main() {
     ], time);
     time++;
     // stats.end();
+    flat.setTime(time);
 
     // Tell the browser to call `tick` again whenever it renders a new frame
     requestAnimationFrame(tick);
