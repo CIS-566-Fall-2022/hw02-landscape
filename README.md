@@ -1,4 +1,6 @@
 
+[Link to live site](https://xidist.github.io/hw02-landscape/)
+
 First, I added a plane that was deformed by sin(x)sin(z) to give it some bumps. Then I added fbm to give it some ridges. I learned this from iq's (raymarching terrain blogpost)[https://iquilezles.org/articles/terrainmarching/]. 
 <img width="1138" alt="image" src="https://user-images.githubusercontent.com/60904107/194143159-72462401-2a4a-468b-919f-a577a853a5ca.png">
 
