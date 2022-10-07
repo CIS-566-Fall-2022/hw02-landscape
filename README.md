@@ -28,7 +28,7 @@ If I were to continue editing this, my main priorties would be:
 
 - Making the clouds not morph so weirdly. I had to really crank up the noise to make them look different from eachother, but that resutls in weird moving as they travel across the screen. I want to change the function that generates them to warp the input position to the fbm that distorts them so they change more gradually as they move. 
 
-- Add a sun/moon that move as day and night change to emphasize the transition, and maybe add some nice sunset/sunrise colors at the transitions between day and night.
+- Add a sun/moon that move as day and night change to emphasize the transition, and maybe add some nice sunset/sunrise colors at the transitions between day and night. Also overall I have some tweaks I want to make to the day night transitions (like the water and sky at night are way too similar in color, and I feel like the overall change could be more dramatic)
 
 - I rly want to add a boat :O like imagine how cute it would be to have a boat come bob along a sin wave down the screen every now and then 
 
