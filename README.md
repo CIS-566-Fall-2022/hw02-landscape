@@ -1,9 +1,9 @@
 # Project Summary
 For my project I decided to make a cartoon stylized seaside. Here's my final product:
 
-https://user-images.githubusercontent.com/25019996/194453796-a77e2acd-0f43-4d9d-8a81-d50634a836fd.mp4
-<img width="1505" alt="Screen Shot 2022-10-06 at 9 19 28 PM" src="https://user-images.githubusercontent.com/25019996/194453832-d3d65b6a-f9d7-48e9-94dd-bb50e7f1827a.png">
-<img width="1505" alt="Screen Shot 2022-10-06 at 9 19 58 PM" src="https://user-images.githubusercontent.com/25019996/194453834-0c9b9dce-ec08-4710-97b9-f6221a46c752.png">
+VIDEO: https://user-images.githubusercontent.com/25019996/194453796-a77e2acd-0f43-4d9d-8a81-d50634a836fd.mp4
+
+<img width="505" alt="Screen Shot 2022-10-06 at 9 19 28 PM" src="https://user-images.githubusercontent.com/25019996/194453832-d3d65b6a-f9d7-48e9-94dd-bb50e7f1827a.png"><img width="505" alt="Screen Shot 2022-10-06 at 9 19 58 PM" src="https://user-images.githubusercontent.com/25019996/194453834-0c9b9dce-ec08-4710-97b9-f6221a46c752.png">
 
 The live demo is at this link: https://e-chou.github.io/sdf-landscape/index.html 
 but tbh it runs so slow that watching the video is probably preferable. I had to make the max steps very high because my clouds are pretty far away and also to get rid of artifacts from grazing angles so it runs stupidly slow.
