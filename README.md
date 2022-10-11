@@ -1,7 +1,7 @@
 
 # Project 2: SDFs
 
-![](landscapeSDF.png)
+![](landscapeSDF.gif)
 
 [Live Demo](https://rcj9719.github.io/ProceduralGraphics-SDFlandscape/)
 
