@@ -1,7 +1,11 @@
-Live Demo: https://rcj9719.github.io/ProceduralGraphics-SDFlandscape/
----
 
 # Project 2: SDFs
+
+![](landscapeSDF.png)
+
+[Live Demo](https://rcj9719.github.io/ProceduralGraphics-SDFlandscape/)
+
+---
 
 ## Objective
 
