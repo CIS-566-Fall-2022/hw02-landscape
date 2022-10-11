@@ -156,7 +156,7 @@ float torusSDF( vec3 p, vec2 t )
 
 float roundedCylinderSDF( vec3 queryPos, float ra, float rb, float h )
 {
-  vec2 d = vec2( length(queryPos.xz)-2.0*ra+rb, abs(queryPos.y) - h );
+  vec2 d = vec2( length(queryPos.xz)-2.0 * ra+rb, abs(queryPos.y) - h );
   return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;
 }
 
@@ -183,16 +183,6 @@ float smoothIntersection( float d1, float d2, float k )
     return mix( d2, d1, h ) + k*h*(1.0-h);
 }
 
-// vec3 opTx( in vec3 p, in transform t, in sdf3d primitive )
-// {
-//     return primitive( invert(t)*p );
-// }
-
-// float opScale( in vec3 p, in float s, in sdf3d primitive )
-// {
-//     return primitive(p/s)*s;
-// }
-
 float opSmoothUnion( float d1, float d2, float k ) {
     float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) - k*h*(1.0-h); }
@@ -205,17 +195,17 @@ float opSmoothIntersection( float d1, float d2, float k ) {
     float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
     return mix( d2, d1, h ) + k*h*(1.0-h); }
 
-// vec3 rotateY(vec3 p, float amt) {
-//     return vec3(cos(amt) * p.x + sin(amt) * p.z, p.y, -sin(amt) * p.x + cos(amt) * p.z);
-// }
+vec3 rotateY(vec3 p, float amt) {
+    return vec3(cos(amt) * p.x + sin(amt) * p.z, p.y, -sin(amt) * p.x + cos(amt) * p.z);
+}
 
-// vec3 rotateX(vec3 p, float amt) {
-//     return vec3(p.x, cos(amt) * p.y - sin(amt) * p.z, sin(p.y) + cos(p.z));
-// }
+vec3 rotateX(vec3 p, float amt) {
+    return vec3(p.x, cos(amt) * p.y - sin(amt) * p.z, sin(p.y) + cos(p.z));
+}
 
-// vec3 rotateZ(vec3 p, float amt) {
-//     return vec3(cos(amt) * p.x - sin(amt) * p.y, cos(amt) * p.x + sin(amt) * p.y, p.z);
-// }
+vec3 rotateZ(vec3 p, float amt) {
+    return vec3(cos(amt) * p.x - sin(amt) * p.y, cos(amt) * p.x + sin(amt) * p.y, p.z);
+}
 
 float mountainHeightFunc(vec3 p) {
     //vec2 randomOffset = vec2(hash(p.x/12.f), hash(p.z/12.f)) * 0.2f;
@@ -258,15 +248,7 @@ float sceneSDF(vec3 p) {
     // pen
     vec3 pRotPen = vec3(p + vec3(2.5f, 0.3, 0.0));
     float a = 90.f * 3.14f/ 180.f;
-    // mat3 rotateX = mat3(vec3(1.f, 0.0, 0.0),
-    //                     vec3(0, cos(a), sin(a) ),
-    //                     vec3(0, -sin(a), cos(a)));
 
-    // mat3 rotateY = mat3(vec3(cos(a), 0.0, -sin(a)),
-    //                     vec3(0, 1.f, 0.f ),
-    //                     vec3(sin(a), 0.f, cos(a)));   
-
-    // pRotPen = rotateY * rotateX * pRotPen;
     pRotPen.xz = rot(45.f * 3.14f/ 180.f) * pRotPen.xz;    // rotation about Y-axis
     pRotPen.yz = rot(90.f * 3.14f/ 180.f) * pRotPen.yz;   // rotation about X-axis
     float dPenBase = roundedCylinderSDF( pRotPen, 0.02f, 0.05f, 1.f);
@@ -312,7 +294,7 @@ float sceneSDF(vec3 p) {
     }
     return min;
     // float d = min(dCBook, min(dPen, dMug));//min(dCBook, dCBookPages);
-    // float d = min(dPen, dMug);//min(dP, min(dPen, min(dCoffeeMug, dCBook))); //min(dPen, min(dMug, dCBook));
+    // float d = min(min(dPen, dMug), dCBook);//min(dP, min(dPen, min(dCoffeeMug, dCBook))); //min(dPen, min(dMug, dCBook));
     // return d;
 
 }
@@ -428,12 +410,16 @@ vec3 getSceneColor(vec2 uv)
                      lights[i].color *
                      max(0.0, dot(n, lights[i].dir));
         }
+        // color = 0.5 * (n + vec3(1.));
+        // if(isnan(color.r)) {
+        //     color = vec3(1., 0., 1.);
+        // }
     }
     else
     {
         color = vec3(0.5, 0.7, 0.9);
     }
-        color = pow(color, vec3(1. / 2.2));
+        // color = pow(color, vec3(1. / 2.2));
         return color;
 }
 
